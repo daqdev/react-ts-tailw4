@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>string tools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .card {
+            background-color: white;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease-in-out;
+        }
+        .btn {
+            border-radius: 0.75rem;
+            font-weight: 500;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06);
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px 0 rgba(0,0,0,0.1);
+        }
+        .btn-primary {
+            background-color: #4f46e5;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #4338ca;
+        }
+        .btn-secondary {
+            background-color: #e2e8f0;
+            color: #475569;
+        }
+        .btn-secondary:hover {
+            background-color: #cbd5e1;
+        }
+        .btn-danger {
+            background-color: #ef4444;
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+        .result-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background-color: #f8fafc;
+            border-radius: 0.75rem;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 0.5rem;
+        }
+        .result-index {
+            color: #64748b;
+            font-weight: 600;
+            margin-right: 1rem;
+        }
+        .result-value {
+            color: #1e293b;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .separator-options input[type="radio"] {
+            display: none;
+        }
+        .separator-options label {
+            user-select: none;
+        }
+        .separator-options span {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            font-size: 0.875rem;
+            border-radius: 0.75rem;
+            background-color: #e2e8f0;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            cursor: pointer;
+            user-select: none;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease-in-out;
+        }
+        .separator-options input[type="radio"]:checked + span {
+            background-color: #4f46e5;
+            color: white;
+            border-color: #4f46e5;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4">
+
+    <header class="relative w-full max-w-6xl mb-8 text-center py-4">
+        <h1 id="site-title" class="text-3xl font-bold">strings</h1>
+        <button id="langToggle" class="absolute bottom-4 right-4 w-10 h-10 rounded-md bg-gray-200 flex items-center justify-center"></button>
+    </header>
+
+    <main class="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full max-w-6xl">
+        <div class="card p-8 flex flex-col">
+            <div class="flex items-center mb-6">
+                 <div class="bg-indigo-100 text-indigo-600 p-2 rounded-lg mr-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                 </div>
+                <h1 id="input-title" class="text-2xl font-bold text-gray-800">Input Text</h1>
+            </div>
+            <textarea id="inputText" class="w-full flex-grow bg-gray-50 border border-gray-300 rounded-xl p-4 text-gray-700 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition resize-y min-h-40 sm:min-h-56" rows="10" placeholder="Paste your data here... e.g.&#10;123, 456, 789&#10;23&#10;hello,world&#10;42"></textarea>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6">
+                <button id="analyzeBtn" class="btn btn-primary p-3 flex items-center justify-center"><i class="fas fa-search mr-2"></i>Analyze Data</button>
+                <div class="separator-options flex justify-center gap-4 col-span-2 sm:col-span-1 mx-auto">
+                    <label class="cursor-pointer">
+                        <input type="radio" id="separatorCommaInput" name="separator" value="," checked>
+                        <span id="separatorCommaBtn">Comma</span>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" id="separatorNewlineInput" name="separator" value="\n">
+                        <span id="separatorNewlineBtn">New Lines</span>
+                    </label>
+                </div>
+                <button id="quoteSingleBtn" class="btn btn-secondary p-3">Single Quotes</button>
+                <button id="quoteDoubleBtn" class="btn btn-secondary p-3">Double Quotes</button>
+                <button id="quoteNoneBtn" class="btn btn-secondary p-3">No Quotes</button>
+                <button id="clearBtn" class="btn btn-danger p-3 flex items-center justify-center"><i class="fas fa-trash-alt mr-2"></i>Clear</button>
+            </div>
+        </div>
+
+        <div class="card p-8 flex flex-col">
+             <div class="flex items-center mb-6">
+                 <div class="bg-green-100 text-green-600 p-2 rounded-lg mr-4">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                 </div>
+                <h1 id="results-title" class="text-2xl font-bold text-gray-800">Results</h1>
+            </div>
+            
+            <div id="results-message" class="hidden bg-green-100 border border-green-200 text-green-800 px-4 py-3 rounded-xl mb-4 text-sm flex items-center">
+                <i class="fas fa-check-circle mr-2"></i>
+                <span id="detectionMessage"></span>
+            </div>
+
+            <div id="results-list" class="flex-grow overflow-y-auto pr-2" style="max-height: 300px;">
+                <!-- Results will be dynamically inserted here -->
+            </div>
+            
+            <div id="formatted-output-container" class="mt-6 hidden">
+                <div class=" relative">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2" id="formattedOutputTitle">Formatted Output:</h3>
+                    <button id="copyBtn" class="absolute top-1 right-3 text-gray-400 hover:text-black transition"
+                        title="Copy to clipboard">
+                        <i class="far fa-copy fa-lg"></i>
+                    </button>
+                </div>
+                <!-- <h3 class="text-lg font-semibold text-gray-700 mb-2" id="formattedOutputTitle">Formatted Output:</h3> -->
+                <!-- <div class="relative"> -->
+                    <textarea id="formattedOutput" readonly class="w-full bg-gray-900 text-green-400 font-mono text-sm border border-gray-700 rounded-xl p-4 pr-12 focus:outline-none resize-y min-h-20 sm:min-h-24" rows="4"></textarea>
+                    <!-- <button id="copyBtn" class="absolute top-3 right-3 text-gray-400 hover:text-white transition" title="Copy to clipboard">
+                        <i class="far fa-copy fa-lg"></i>
+                    </button>
+                </div> -->
+                <p id="copy-hint" class="text-xs text-gray-500 mt-2 text-center">Click the formatted text or the icon to copy it.</p>
+            </div>
+        </div>
+    </main>
+
+    <div id="copy-greeting" class="hidden fixed top-4 right-4 bg-green-500 text-white text-sm px-4 py-2 rounded-lg shadow pointer-events-none"></div>
+
+    <script>
+        const inputText = document.getElementById('inputText');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const separatorCommaInput = document.getElementById('separatorCommaInput');
+        const separatorNewlineInput = document.getElementById('separatorNewlineInput');
+        const separatorCommaBtn = document.getElementById('separatorCommaBtn');
+        const separatorNewlineBtn = document.getElementById('separatorNewlineBtn');
+        const quoteSingleBtn = document.getElementById('quoteSingleBtn');
+        const quoteDoubleBtn = document.getElementById('quoteDoubleBtn');
+        const quoteNoneBtn = document.getElementById('quoteNoneBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const resultsMessage = document.getElementById('results-message');
+        const detectionMessage = document.getElementById('detectionMessage');
+        const resultsList = document.getElementById('results-list');
+        const formattedOutputContainer = document.getElementById('formatted-output-container');
+        const formattedOutputTitle = document.getElementById('formattedOutputTitle');
+        const formattedOutput = document.getElementById('formattedOutput');
+        const copyBtn = document.getElementById('copyBtn');
+        const langToggle = document.getElementById('langToggle');
+        const inputTitle = document.getElementById('input-title');
+        const resultsTitle = document.getElementById('results-title');
+        const copyHintEl = document.getElementById('copy-hint');
+        const copyGreetingEl = document.getElementById('copy-greeting');
+
+        const translations = {
+            en: {
+                inputText: 'Input Text',
+                analyzeData: 'Analyze',
+                separatorComma: 'Comma',
+                separatorNewline: 'New Lines',
+                quoteSingle: 'Single Quotes',
+                quoteDouble: 'Double Quotes',
+                noQuotes: 'No Quotes',
+                clear: 'Clear',
+                results: 'Results',
+                formattedOutput: 'Output',
+                singleQuotes: 'Single Quotes',
+                doubleQuotes: 'Double Quotes',
+                newLines: 'New Lines',
+                comma: 'Comma',
+                copyHint: 'Click the formatted text or the icon to copy it.',
+                copyGreeting: 'Copied to clipboard!',
+                detection: 'Data dump detected! Found {count} values ready for processing.',
+                placeholder: 'Paste your data here... e.g.\n123, 456, 789\n23\nhello,world\n42'
+            },
+            es: {
+                inputText: 'Texto de Entrada',
+                analyzeData: 'Analizar',
+                separatorComma: 'Coma',
+                separatorNewline: 'Nueva línea',
+                quoteSingle: 'Comillas simples',
+                quoteDouble: 'Comillas dobles',
+                noQuotes: 'Sin comillas',
+                clear: 'Limpiar',
+                results: 'Resultados',
+                formattedOutput: 'Salida',
+                singleQuotes: 'Comillas simples',
+                doubleQuotes: 'Comillas dobles',
+                newLines: 'Nuevas líneas',
+                comma: 'Coma',
+                copyHint: 'Haz clic en el texto formateado o el ícono para copiarlo.',
+                copyGreeting: 'Copiado al portapapeles!',
+                detection: '¡Volcado detectado! Se encontraron {count} valores listos para procesar.',
+                placeholder: 'Pega tus datos aquí... ej.\n123, 456, 789\n23\nhola,mundo\n42'
+            },
+            pt: {
+                inputText: 'Texto de Entrada',
+                analyzeData: 'Analisar',
+                separatorComma: 'Vírgula',
+                separatorNewline: 'Nova linha',
+                quoteSingle: 'Aspas simples',
+                quoteDouble: 'Aspas duplas',
+                noQuotes: 'Sem aspas',
+                clear: 'Limpar',
+                results: 'Resultados',
+                formattedOutput: 'Saída',
+                singleQuotes: 'Aspas simples',
+                doubleQuotes: 'Aspas duplas',
+                newLines: 'Linhas',
+                comma: 'Vírgula',
+                copyHint: 'Clique no texto formatado ou no ícone para copiar.',
+                copyGreeting: 'Copiado!',
+                detection: 'Dump detectado! Encontrados {count} valores prontos para processar.',
+                placeholder: 'Cole seus dados aqui... ex.\n123, 456, 789\n23\nola,mundo\n42'
+            }
+        };
+
+        const langOrder = ['en', 'es', 'pt'];
+        const flagIcons = { en: '🇺🇸', es: '🇦🇷', pt: '🇧🇷' };
+        let currentLang = 'en';
+
+        function t(key, params = {}) {
+            let str = translations[currentLang][key] || key;
+            for (const p in params) {
+                str = str.replace('{' + p + '}', params[p]);
+            }
+            return str;
+        }
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.documentElement.lang = lang;
+            langToggle.textContent = flagIcons[lang];
+            inputTitle.textContent = t('inputText');
+            analyzeBtn.innerHTML = '<i class="fas fa-search mr-2"></i>' + t('analyzeData');
+            separatorCommaBtn.textContent = t('comma');
+            separatorNewlineBtn.textContent = t('newLines');
+            updateSeparatorUI();
+            quoteSingleBtn.textContent = t('quoteSingle');
+            quoteDoubleBtn.textContent = t('quoteDouble');
+            quoteNoneBtn.textContent = t('noQuotes');
+            clearBtn.innerHTML = '<i class="fas fa-trash-alt mr-2"></i>' + t('clear');
+            resultsTitle.textContent = t('results');
+            formattedOutputTitle.textContent = t('formattedOutput') + ':';
+            copyHintEl.textContent = t('copyHint');
+            copyGreetingEl.textContent = t('copyGreeting');
+            inputText.placeholder = t('placeholder');
+        }
+
+        function toggleLanguage() {
+            const next = (langOrder.indexOf(currentLang) + 1) % langOrder.length;
+            setLanguage(langOrder[next]);
+        }
+
+        let parsedData = [];
+        let currentSeparator = ',';
+        let currentQuote = '';
+        let greetingTimeout;
+
+        analyzeBtn.addEventListener('click', analyzeData);
+        separatorCommaInput.addEventListener('change', () => setSeparator(','));
+        separatorNewlineInput.addEventListener('change', () => setSeparator('\n'));
+        quoteSingleBtn.addEventListener('click', () => setQuote("'"));
+        quoteDoubleBtn.addEventListener('click', () => setQuote('"'));
+        quoteNoneBtn.addEventListener('click', () => setQuote(''));
+        clearBtn.addEventListener('click', clearAll);
+        copyBtn.addEventListener('click', copyToClipboard);
+        formattedOutput.addEventListener('click', copyToClipboard);
+        langToggle.addEventListener('click', toggleLanguage);
+
+        setLanguage(currentLang);
+
+        function analyzeData() {
+            const text = inputText.value.trim();
+            if (!text) {
+                parsedData = [];
+                updateResultsUI();
+                return;
+            }
+
+            const lines = text.split('\n').filter(line => line.trim() !== '');
+            const values = lines.flatMap(line =>
+                line.split(',')
+                    .map(item => item.trim())
+                    .filter(item => item !== '')
+                    .map(item => {
+                        if ((item.startsWith('"') && item.endsWith('"')) ||
+                            (item.startsWith("'") && item.endsWith("'"))) {
+                            return item.slice(1, -1).trim();
+                        }
+                        return item;
+                    })
+            );
+            
+            parsedData = values;
+            updateResultsUI();
+        }
+
+        function updateResultsUI() {
+            resultsList.innerHTML = '';
+
+            if (parsedData.length > 0) {
+                detectionMessage.textContent = t('detection', { count: parsedData.length });
+                resultsMessage.classList.remove('hidden');
+
+                parsedData.forEach((item, index) => {
+                    const resultItem = document.createElement('div');
+                    resultItem.className = 'result-item fade-in';
+                    resultItem.style.animationDelay = `${index * 50}ms`;
+                    resultItem.innerHTML = `
+                        <span class="result-index">#${index + 1}</span>
+                        <span class="result-value">${escapeHtml(item)}</span>
+                    `;
+                    resultsList.appendChild(resultItem);
+                });
+            } else {
+                resultsMessage.classList.add('hidden');
+                formattedOutputContainer.classList.add('hidden');
+            }
+        }
+
+        function setSeparator(sep) {
+            currentSeparator = sep;
+            updateSeparatorUI();
+            updateFormattedOutput();
+        }
+
+        function updateSeparatorUI() {
+            separatorCommaInput.checked = currentSeparator === ',';
+            separatorNewlineInput.checked = currentSeparator === '\n';
+        }
+
+        function setQuote(q) {
+            currentQuote = q;
+            updateFormattedOutput();
+        }
+
+        function updateFormattedOutput() {
+            if (parsedData.length === 0) {
+                analyzeData();
+                if (parsedData.length === 0) return;
+            }
+
+            const sepStr = currentSeparator === ',' ? ', ' : '\n';
+
+            let formattedString;
+            if (currentQuote) {
+                formattedString = parsedData.map(item => `${currentQuote}${item.replace(new RegExp(currentQuote, 'g'), `\\${currentQuote}`)}${currentQuote}`).join(sepStr);
+            } else {
+                formattedString = parsedData.join(sepStr);
+            }
+
+            formattedOutput.value = formattedString;
+            const quoteLabel = currentQuote === "'" ? t('singleQuotes') : currentQuote === '"' ? t('doubleQuotes') : t('noQuotes');
+            const sepLabel = currentSeparator === ',' ? t('separatorComma') : t('separatorNewline');
+            formattedOutputTitle.textContent = `${t('formattedOutput')} (${quoteLabel}, ${sepLabel}):`;
+            formattedOutputContainer.classList.remove('hidden');
+        }
+
+        function clearAll() {
+            inputText.value = '';
+            parsedData = [];
+            updateResultsUI();
+            formattedOutput.value = '';
+            formattedOutputContainer.classList.add('hidden');
+            resultsMessage.classList.add('hidden');
+            copyGreetingEl.classList.add('hidden');
+            if (greetingTimeout) clearTimeout(greetingTimeout);
+        }
+
+        function copyToClipboard() {
+            if (!formattedOutput.value) return;
+
+            const textArea = document.createElement('textarea');
+            textArea.value = formattedOutput.value;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                copyBtn.innerHTML = '<i class="fas fa-check text-green-600 fa-lg"></i>';
+                copyGreetingEl.classList.remove('hidden');
+                copyGreetingEl.style.opacity = '0';
+                copyGreetingEl.style.transition = 'opacity 0.4s';
+                // Fade in
+                setTimeout(() => {
+                    copyGreetingEl.style.opacity = '1';
+                }, 10);
+                if (greetingTimeout) clearTimeout(greetingTimeout);
+                greetingTimeout = setTimeout(() => {
+                    // Fade out
+                    copyGreetingEl.style.opacity = '0';
+                    setTimeout(() => {
+                        copyGreetingEl.classList.add('hidden');
+                    }, 400);
+                }, 1000);
+                setTimeout(() => {
+                   copyBtn.innerHTML = '<i class="far fa-copy fa-lg"></i>';
+                }, 1500);
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+            }
+            document.body.removeChild(textArea);
+        }
+        
+        function escapeHtml(unsafe) {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
+                // Auto-process on input for better UX
+        document.getElementById('inputText').addEventListener('input', function() {
+            // Debounce to avoid excessive processing
+            clearTimeout(this.timeout);
+            this.timeout = setTimeout(analyzeData, 500);
+        });
+
+    </script>
+
+</body>
+</html>

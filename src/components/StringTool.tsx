@@ -1,0 +1,101 @@
+import { useState, useEffect } from 'react';
+import InputPanel from './InputPanel';
+import ResultsPanel from './ResultsPanel';
+import { useTranslation } from '../hooks/useTranslation';
+
+export default function StringTool() {
+    const [inputText, setInputText] = useState('');
+    const [parsedData, setParsedData] = useState([]);
+    const [separator, setSeparator] = useState(',');
+    const [quote, setQuote] = useState('');
+    const [formattedOutput, setFormattedOutput] = useState('');
+    const [showCopied, setShowCopied] = useState(false);
+    const { t, toggleLanguage, currentLang } = useTranslation();
+
+    const analyzeData = () => {
+        const text = inputText.trim();
+        if (!text) {
+            setParsedData([]);
+            return;
+        }
+
+        const lines = text.split('\n').filter(line => line.trim() !== '');
+        const values = lines.flatMap(line =>
+            line.split(',')
+                .map(item => item.trim())
+                .filter(item => item !== '')
+                .map(item => {
+                    if ((item.startsWith('"') && item.endsWith('"')) || (item.startsWith("'") && item.endsWith("'"))) {
+                        return item.slice(1, -1).trim();
+                    }
+                    return item;
+                })
+        );
+        setParsedData(values);
+    };
+
+    const updateFormattedOutput = () => {
+        if (parsedData.length === 0) {
+            setFormattedOutput('');
+            return;
+        }
+
+        const sepStr = separator === ',' ? ', ' : '\n';
+        let formattedString;
+
+        if (quote) {
+            formattedString = parsedData.map(item => `${quote}${item.replace(new RegExp(quote, 'g'), `\\${quote}`)}${quote}`).join(sepStr);
+        } else {
+            formattedString = parsedData.join(sepStr);
+        }
+
+        setFormattedOutput(formattedString);
+    };
+
+    const clearAll = () => {
+        setInputText('');
+        setParsedData([]);
+        setFormattedOutput('');
+    };
+
+    const copyToClipboard = () => {
+        if (!formattedOutput) return;
+        navigator.clipboard.writeText(formattedOutput).then(() => {
+            setShowCopied(true);
+            setTimeout(() => setShowCopied(false), 2000);
+        });
+    };
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            analyzeData();
+        }, 500);
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [inputText]);
+
+    useEffect(() => {
+        updateFormattedOutput();
+    }, [parsedData, separator, quote]);
+
+    return (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full max-w-6xl items-stretch">
+            <InputPanel
+                inputText={inputText}
+                setInputText={setInputText}
+                analyzeData={analyzeData}
+                setSeparator={setSeparator}
+                setQuote={setQuote}
+                clearAll={clearAll}
+            />
+            <ResultsPanel
+                parsedData={parsedData}
+                formattedOutput={formattedOutput}
+                copyToClipboard={copyToClipboard}
+                showCopied={showCopied}
+            />
+        </div>
+    );
+}

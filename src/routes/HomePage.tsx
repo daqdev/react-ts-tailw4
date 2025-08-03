@@ -1,9 +1,10 @@
 import { useState } from "react";
 import ToolCard from "../components/ToolCard";
 import ToolSelector from "../components/ToolSelector";
+import StringTool from "../components/StringTool";
 
 const tools = [
-    { id: 1, name: "Sprint Wizard", component: <div>Sprint Wizard Tool</div> },
+    { id: 1, name: "String Tool", component: <StringTool /> },
     { id: 2, name: "Tool 2", component: <div>Tool 2 Content</div> },
     { id: 3, name: "Tool 3", component: <div>Tool 3 Content</div> },
     { id: 4, name: "Tool 4", component: <div>Tool 4 Content</div> },

@@ -12,7 +12,7 @@ export default function HomePage() {
                     <p className="mt-4 text-base text-pretty text-gray-700 sm:text-lg/relaxed">
                         Lorem ipsum dolor sit amet, consectetur adipisicing
                         elit. Eaque, nisi. Natus, provident accusamus impedit
-                        minima harum corporis iusto.
+                        minima harum corporis iusto...
                     </p>
 
                     <div className="mt-4 flex justify-center gap-4 sm:mt-6">

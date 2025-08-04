@@ -6,8 +6,8 @@ const langOrder = ['en', 'es', 'pt'];
 export function useTranslation() {
     const [currentLang, setCurrentLang] = useState('en');
 
-    const t = useCallback((key, params = {}) => {
-        let str = translations[currentLang][key] || key;
+    const t = useCallback((key: string, params: { [key: string]: string } = {}) => {
+        let str:string = translations[currentLang][key] || key;
         for (const p in params) {
             str = str.replace(`{${p}}`, params[p]);
         }

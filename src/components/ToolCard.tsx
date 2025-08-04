@@ -1,4 +1,16 @@
-export default function ToolCard({ tool, onRemove }) {
+import type React from "react";
+
+interface ToolCardProps {
+    tool: {
+        id: number;
+        name: string;
+        component: React.ReactElement;
+        instanceId: number;
+    };
+    onRemove: (instanceId: number) => void;
+}
+
+export default function ToolCard({ tool, onRemove }: ToolCardProps) {
     return (
         <div className="relative bg-white p-6 rounded-lg shadow-lg">
             <button

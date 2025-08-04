@@ -1,9 +1,19 @@
 import { useState } from 'react';
 
-export default function SegmentedControl({ options, onChange }) {
-    const [selected, setSelected] = useState(options[0].value);
+interface Option {
+    label: string;
+    value: string;
+}
 
-    const handleChange = (value) => {
+interface SegmentedControlProps {
+    options: Option[];
+    onChange: (value: string) => void;
+}
+
+export default function SegmentedControl({ options, onChange }: SegmentedControlProps) {
+    const [selected, setSelected] = useState<string>(options[0].value);
+
+    const handleChange = (value: string) => {
         setSelected(value);
         onChange(value);
     };

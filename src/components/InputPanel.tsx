@@ -1,7 +1,9 @@
 import { useTranslation } from '../hooks/useTranslation';
 import SegmentedControl from './SegmentedControl';
+import type { InputPanelProps } from '../interfaces/interfaces';
 
-export default function InputPanel({ inputText, setInputText, analyzeData, setSeparator, setQuote, clearAll }) {
+
+export default function InputPanel({ inputText, setInputText, analyzeData, setSeparator, setQuote, clearAll }: InputPanelProps) {
     const { t } = useTranslation();
 
     const quoteOptions = [

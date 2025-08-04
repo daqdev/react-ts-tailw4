@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import InputPanel from './InputPanel';
 import ResultsPanel from './ResultsPanel';
-import { useTranslation } from '../hooks/useTranslation';
+// import { useTranslation } from '../hooks/useTranslation';
+
+
 
 export default function StringTool() {
-    const [inputText, setInputText] = useState('');
-    const [parsedData, setParsedData] = useState([]);
-    const [separator, setSeparator] = useState(',');
-    const [quote, setQuote] = useState('');
-    const [formattedOutput, setFormattedOutput] = useState('');
-    const [showCopied, setShowCopied] = useState(false);
-    const { t, toggleLanguage, currentLang } = useTranslation();
+    const [inputText, setInputText] = useState<string>('');
+    const [parsedData, setParsedData] = useState<string[]>([]);
+    const [separator, setSeparator] = useState<string>(',');
+    const [quote, setQuote] = useState<string>('');
+    const [formattedOutput, setFormattedOutput] = useState<string>('');
+    const [showCopied, setShowCopied] = useState<boolean>(false);
+    // const { t, toggleLanguage, currentLang } = useTranslation();
 
     const analyzeData = () => {
         const text = inputText.trim();

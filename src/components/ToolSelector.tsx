@@ -1,4 +1,17 @@
-export default function ToolSelector({ tools, onSelect }) {
+import type React from "react";
+
+interface Tool {
+    id: number;
+    name: string;
+    component: React.ReactElement;
+}
+
+interface ToolSelectorProps {
+    tools: Tool[];
+    onSelect: (tool: Tool) => void;
+}
+
+export default function ToolSelector({ tools, onSelect }: ToolSelectorProps) {
     return (
         <div className="flex justify-center gap-4 mb-8">
             {tools.map((tool) => (

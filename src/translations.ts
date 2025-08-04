@@ -1,5 +1,5 @@
-export const translations = {
-    en: {
+export const translations: { [key: string]: { [key: string]: string } } = {
+    "en": {
         inputText: 'Input Text',
         analyzeData: 'Analyze',
         separatorComma: 'Comma',
@@ -19,7 +19,7 @@ export const translations = {
         detection: 'Data dump detected! Found {count} values ready for processing.',
         placeholder: 'Paste your data here... e.g.\n123, 456, 789\n23\nhello,world\n42'
     },
-    es: {
+    "es": {
         inputText: 'Texto de Entrada',
         analyzeData: 'Analizar',
         separatorComma: 'Coma',
@@ -39,7 +39,7 @@ export const translations = {
         detection: '¡Volcado detectado! Se encontraron {count} valores listos para procesar.',
         placeholder: 'Pega tus datos aquí... ej.\n123, 456, 789\n23\nhola,mundo\n42'
     },
-    pt: {
+    "pt": {
         inputText: 'Texto de Entrada',
         analyzeData: 'Analisar',
         separatorComma: 'Vírgula',

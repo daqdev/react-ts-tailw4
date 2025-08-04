@@ -3,7 +3,17 @@ import ToolCard from "../components/ToolCard";
 import ToolSelector from "../components/ToolSelector";
 import StringTool from "../components/StringTool";
 
-const tools = [
+interface Tool {
+    id: number;
+    name: string;
+    component: React.ReactElement;
+}
+
+interface SelectedTool extends Tool {
+    instanceId: number;
+}
+
+const tools: Tool[] = [
     { id: 1, name: "String Tool", component: <StringTool /> },
     // { id: 2, name: "Tool 2", component: <div>Tool 2 Content</div> },
     // { id: 3, name: "Tool 3", component: <div>Tool 3 Content</div> },
@@ -11,15 +21,15 @@ const tools = [
 ];
 
 export default function HomePage() {
-    const [selectedTools, setSelectedTools] = useState([]);
+    const [selectedTools, setSelectedTools] = useState<SelectedTool[]>([]);
 
-    const addTool = (tool) => {
+    const addTool = (tool: Tool) => {
         if (selectedTools.length < 3) {
             setSelectedTools((prev) => [...prev, { ...tool, instanceId: Date.now() }]);
         }
     };
 
-    const removeTool = (instanceId) => {
+    const removeTool = (instanceId: number) => {
         if (window.confirm("Are you sure you want to close this tool?")) {
             setSelectedTools((prev) => prev.filter((t) => t.instanceId !== instanceId));
         }
@@ -43,7 +53,7 @@ export default function HomePage() {
                             : "grid-cols-1 md:grid-cols-3"
                     }`}
                 >
-                    {selectedTools.map((tool) => (
+                    {selectedTools.map((tool: SelectedTool) => (
                         <ToolCard key={tool.instanceId} tool={tool} onRemove={removeTool} />
                     ))}
                 </div>

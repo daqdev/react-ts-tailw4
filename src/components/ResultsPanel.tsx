@@ -1,7 +1,14 @@
 import { useTranslation } from '../hooks/useTranslation';
 import ResultsFeed from './ResultsFeed';
 
-export default function ResultsPanel({ parsedData, formattedOutput, copyToClipboard, showCopied }) {
+interface ResultsPanelProps {
+    parsedData: string[];
+    formattedOutput: string;
+    copyToClipboard: () => void;
+    showCopied: boolean;
+}
+
+export default function ResultsPanel({ parsedData, formattedOutput, copyToClipboard, showCopied }: ResultsPanelProps) {
     const { t } = useTranslation();
 
     return (
@@ -17,7 +24,7 @@ export default function ResultsPanel({ parsedData, formattedOutput, copyToClipbo
                 <>
                     <div className="bg-green-100 border border-green-200 text-green-800 px-4 py-3 rounded-xl mb-4 text-sm flex items-center">
                         <i className="fas fa-check-circle mr-2"></i>
-                        <span>{t('detection', { count: parsedData.length })}</span>
+                        <span>{t('detection', { count: parsedData.length.toString() })}</span>
                     </div>
 
                     <div className="flex-grow overflow-y-auto pr-2" style={{ height: '150px' }}>

@@ -1,4 +1,8 @@
-export default function ResultsFeed({ parsedData }) {
+interface ResultsFeedProps {
+    parsedData: string[];
+}
+
+export default function ResultsFeed({ parsedData }: ResultsFeedProps) {
     return (
         <div className="flow-root">
             <ul className="-my-8 divide-y divide-gray-100 mt-0.5" >

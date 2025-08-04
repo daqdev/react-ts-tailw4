@@ -1,4 +1,5 @@
 import { useTranslation } from '../hooks/useTranslation';
+import ResultsFeed from './ResultsFeed';
 
 export default function ResultsPanel({ parsedData, formattedOutput, copyToClipboard, showCopied }) {
     const { t } = useTranslation();
@@ -20,12 +21,7 @@ export default function ResultsPanel({ parsedData, formattedOutput, copyToClipbo
                     </div>
 
                     <div className="flex-grow overflow-y-auto pr-2" style={{ height: '150px' }}>
-                        {parsedData.map((item, index) => (
-                            <div key={index} className="result-item fade-in" style={{ animationDelay: `${index * 50}ms` }}>
-                                <span className="result-index">#{index + 1}</span>
-                                <span className="result-value">{item}</span>
-                            </div>
-                        ))}
+                        <ResultsFeed parsedData={parsedData} />
                     </div>
 
                     {formattedOutput && (

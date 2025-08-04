@@ -5,9 +5,9 @@ import StringTool from "../components/StringTool";
 
 const tools = [
     { id: 1, name: "String Tool", component: <StringTool /> },
-    { id: 2, name: "Tool 2", component: <div>Tool 2 Content</div> },
-    { id: 3, name: "Tool 3", component: <div>Tool 3 Content</div> },
-    { id: 4, name: "Tool 4", component: <div>Tool 4 Content</div> },
+    // { id: 2, name: "Tool 2", component: <div>Tool 2 Content</div> },
+    // { id: 3, name: "Tool 3", component: <div>Tool 3 Content</div> },
+    // { id: 4, name: "Tool 4", component: <div>Tool 4 Content</div> },
 ];
 
 export default function HomePage() {

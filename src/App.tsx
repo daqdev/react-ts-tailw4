@@ -1,15 +1,16 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import "./App.css";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import HomePage from './routes/HomePage';
+// import SprintWizardPage from '@/routes/SprintWizardPage';
 
-function App() {
+
+export default function App() {
   return (
-    <main className="grid h-screen place-items-center bg-slate-900 text-white">
-      <h1 className="text-6xl font-bold text-sky-600">
-        React + TS + Tailwind v4 🎉
-      </h1>
-    </main>
+      <BrowserRouter>
+          <Routes>
+              <Route path="/" element={<HomePage />} />
+              {/* <Route path="/wizard" element={<SprintWizardPage />} /> */}
+          </Routes>
+      </BrowserRouter>
   );
 }
-export default App;

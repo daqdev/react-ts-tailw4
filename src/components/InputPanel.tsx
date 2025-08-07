@@ -60,7 +60,7 @@ export default function InputPanel({ inputText, setInputText, analyzeData, setSe
                 <div className="col-span-1">
                     <button
                         onClick={analyzeData}
-                        className="inline-flex items-center justify-center rounded-l-xl border border-indigo-600 bg-indigo-600 px-3 py-3 text-sm font-medium text-white transition hover:scale-105 hover:shadow-xl focus:outline-none focus:ring active:bg-indigo-700"
+                        className="inline-flex rounded-l-xl border border-indigo-600 bg-indigo-600 px-3 py-3 text-sm font-medium text-white transition hover:scale-105 hover:shadow-xl focus:outline-none focus:ring active:bg-indigo-700"
                     >
                         <span className="flex items-center">
                             {t("analyzeData")}
@@ -84,7 +84,7 @@ export default function InputPanel({ inputText, setInputText, analyzeData, setSe
                 <div className="col-span-1">
                     <button
                         onClick={clearAll}
-                        className="inline-block rounded-r-xl border border-current px-8 py-3 text-sm font-medium text-red-600 transition hover:scale-105 hover:shadow-xl focus:outline-none focus:ring active:text-amber-600"
+                        className="inline-flex rounded-r-xl border border-current px-7 py-3 text-sm font-medium text-red-600 transition hover:scale-105 hover:shadow-xl focus:outline-none focus:ring active:text-amber-600"
                     >
                         <span className="flex items-center">
                         {t("clear")}

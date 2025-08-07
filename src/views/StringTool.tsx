@@ -1,9 +1,7 @@
-import { useState, useEffect } from 'react';
-import InputPanel from './InputPanel';
-import ResultsPanel from './ResultsPanel';
-// import { useTranslation } from '../hooks/useTranslation';
-
-
+import { useState, useEffect, useCallback } from 'react';
+import InputPanel from '../components/InputPanel';
+import ResultsPanel from '../components/ResultsPanel';
+import './views.css';
 
 export default function StringTool() {
     const [inputText, setInputText] = useState<string>('');
@@ -12,9 +10,8 @@ export default function StringTool() {
     const [quote, setQuote] = useState<string>('');
     const [formattedOutput, setFormattedOutput] = useState<string>('');
     const [showCopied, setShowCopied] = useState<boolean>(false);
-    // const { t, toggleLanguage, currentLang } = useTranslation();
 
-    const analyzeData = () => {
+    const analyzeData = useCallback(() => {
         const text = inputText.trim();
         if (!text) {
             setParsedData([]);
@@ -34,9 +31,9 @@ export default function StringTool() {
                 })
         );
         setParsedData(values);
-    };
+    }, [inputText]);
 
-    const updateFormattedOutput = () => {
+    const updateFormattedOutput = useCallback(() => {
         if (parsedData.length === 0) {
             setFormattedOutput('');
             return;
@@ -52,7 +49,7 @@ export default function StringTool() {
         }
 
         setFormattedOutput(formattedString);
-    };
+    }, [parsedData, separator, quote]);
 
     const clearAll = () => {
         setInputText('');
@@ -76,28 +73,31 @@ export default function StringTool() {
         return () => {
             clearTimeout(handler);
         };
-    }, [inputText]);
+    }, [analyzeData]);
 
     useEffect(() => {
         updateFormattedOutput();
-    }, [parsedData, separator, quote]);
+    }, [updateFormattedOutput]);
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full max-w-6xl items-stretch">
-            <InputPanel
-                inputText={inputText}
-                setInputText={setInputText}
-                analyzeData={analyzeData}
-                setSeparator={setSeparator}
-                setQuote={setQuote}
-                clearAll={clearAll}
-            />
-            <ResultsPanel
-                parsedData={parsedData}
-                formattedOutput={formattedOutput}
-                copyToClipboard={copyToClipboard}
-                showCopied={showCopied}
-            />
+        <div className="view-block h-5 v-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full max-w-6xl items-stretch">
+                <InputPanel
+                    inputText={inputText}
+                    setInputText={setInputText}
+                    analyzeData={analyzeData}
+                    setSeparator={setSeparator}
+                    setQuote={setQuote}
+                    clearAll={clearAll}
+                />
+                <ResultsPanel
+                    parsedData={parsedData}
+                    formattedOutput={formattedOutput}
+                    copyToClipboard={copyToClipboard}
+                    showCopied={showCopied}
+                />
+            </div>
         </div>
     );
 }
+

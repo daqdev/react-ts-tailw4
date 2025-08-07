@@ -1,0 +1,19 @@
+.view-container {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.view-block {
+  margin: 5px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.h-5 {
+  width: calc(100% - 10px);
+}
+
+.v-4 {
+  height: 36rem;
+}

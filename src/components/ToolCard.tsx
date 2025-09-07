@@ -6,13 +6,17 @@ interface ToolCardProps {
         name: string;
         component: React.ReactElement;
         instanceId: number;
+        color: string;
     };
     onRemove: (instanceId: number) => void;
 }
 
 export default function ToolCard({ tool, onRemove }: ToolCardProps) {
+    console.log(tool.color);
+    
     return (
-        <div className="relative bg-white p-6 rounded-lg shadow-lg">
+        <div className={`relative ${tool.color} p-6 rounded-lg shadow-lg mb-4`}>
+
             <button
                 onClick={() => onRemove(tool.instanceId)}
                 className="absolute top-2 right-2 p-1 rounded-md bg-red-500 text-white hover:bg-red-600"

@@ -2,11 +2,13 @@ import { useState } from "react";
 import ToolCard from "../components/ToolCard";
 import ToolSelector from "../components/ToolSelector";
 import StringTool from "../components/StringTool";
+import JsonTool from "../components/JsonTool";
 
 interface Tool {
     id: number;
     name: string;
     component: React.ReactElement;
+    color?: string;
 }
 
 interface SelectedTool extends Tool {
@@ -15,7 +17,7 @@ interface SelectedTool extends Tool {
 
 const tools: Tool[] = [
     { id: 1, name: "String Tool", component: <StringTool /> },
-    // { id: 2, name: "Tool 2", component: <div>Tool 2 Content</div> },
+    { id: 2, name: "JSON Tool", component: <JsonTool /> },
     // { id: 3, name: "Tool 3", component: <div>Tool 3 Content</div> },
     // { id: 4, name: "Tool 4", component: <div>Tool 4 Content</div> },
 ];
@@ -24,9 +26,12 @@ export default function HomePage() {
     const [selectedTools, setSelectedTools] = useState<SelectedTool[]>([]);
 
     const addTool = (tool: Tool) => {
-        if (selectedTools.length < 3) {
-            setSelectedTools((prev) => [...prev, { ...tool, instanceId: Date.now() }]);
-        }
+        // if (selectedTools.length < 3) {
+            
+        let col = randomColor();
+        console.log("const addTool = (tool: Tool) => {" + col);
+            setSelectedTools((prev) => [...prev, { ...tool, instanceId: Date.now() , color:col }]);
+        // }
     };
 
     const removeTool = (instanceId: number) => {
@@ -44,15 +49,7 @@ export default function HomePage() {
 
                 <ToolSelector tools={tools} onSelect={addTool} />
 
-                <div
-                    className={`grid gap-8 ${
-                        selectedTools.length === 1
-                            ? "grid-cols-1"
-                            : selectedTools.length === 2
-                            ? "grid-cols-1 md:grid-cols-2"
-                            : "grid-cols-1 md:grid-cols-3"
-                    }`}
-                >
+                <div className="grid-cols-1">
                     {selectedTools.map((tool: SelectedTool) => (
                         <ToolCard key={tool.instanceId} tool={tool} onRemove={removeTool} />
                     ))}
@@ -61,3 +58,32 @@ export default function HomePage() {
         </section>
     );
 }
+
+const colors = [
+    'bg-slate-50',
+    'bg-gray-50',
+    'bg-zinc-50',
+    'bg-neutral-50',
+    'bg-stone-50',
+    'bg-red-50',
+    'bg-orange-50',
+    'bg-amber-50',
+    'bg-yellow-50',
+    'bg-lime-50',
+    'bg-green-50',
+    'bg-emerald-50',
+    'bg-teal-50',
+    'bg-cyan-50',
+    'bg-sky-50',
+    'bg-blue-50',
+    'bg-indigo-50',
+    'bg-violet-50',
+    'bg-purple-50',
+    'bg-fuchsia-50',
+    'bg-pink-50',
+    'bg-rose-50',
+  ];
+
+const randomColor = () => colors[Math.floor(Math.random() * colors.length)];
+
+// }

@@ -84,7 +84,7 @@ export default function InputPanel({ inputText, setInputText, analyzeData, setSe
                 <div className="col-span-1">
                     <button
                         onClick={clearAll}
-                        className="inline-block rounded-r-xl border border-current px-8 py-3 text-sm font-medium text-red-600 transition hover:scale-105 hover:shadow-xl focus:outline-none focus:ring active:text-amber-600"
+                        className="inline-block rounded-r-xl border border-current px-7 py-3 text-sm font-medium text-red-600 transition hover:scale-105 hover:shadow-xl focus:outline-none focus:ring active:text-amber-600"
                     >
                         <span className="flex items-center">
                         {t("clear")}

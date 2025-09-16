@@ -1,3 +1,4 @@
+
 import { useTranslation } from '../hooks/useTranslation';
 import SegmentedControl from './SegmentedControl';
 import type { InputPanelProps } from '../interfaces/interfaces';

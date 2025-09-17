@@ -5,6 +5,7 @@ export default function EpochTool() {
     const [convertedDate, setConvertedDate] = useState("");
     const [copyLabel, setCopyLabel] = useState("Copy");
     const [currentEpoch, setCurrentEpoch] = useState(() => Math.floor(Date.now() / 1000));
+    const [useUtc, setUseUtc] = useState(false);
 
     useEffect(() => {
         const interval = window.setInterval(() => {
@@ -36,17 +37,24 @@ export default function EpochTool() {
             return;
         }
 
-        const formatted = parsedDate.toLocaleString(undefined, {
+        const options: Intl.DateTimeFormatOptions = {
             month: "short",
             day: "numeric",
             year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
             second: "2-digit",
-        });
+            timeZoneName: "short",
+        };
+
+        if (useUtc) {
+            options.timeZone = "UTC";
+        }
+
+        const formatted = parsedDate.toLocaleString(undefined, options);
 
         setConvertedDate(formatted);
-    }, [epochInput]);
+    }, [epochInput, useUtc]);
 
     const handleCopy = async () => {
         try {
@@ -98,6 +106,17 @@ export default function EpochTool() {
                     placeholder="1697040000"
                     className="w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
                 />
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setUseUtc((prev) => !prev)}
+                        className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300"
+                    >
+                        {useUtc ? "Show local time" : "Show UTC"}
+                    </button>
+                    <span className="text-xs text-slate-500">
+                        Currently showing {useUtc ? "UTC" : "local"} time
+                    </span>
+                </div>
                 {convertedDate && (
                     <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700">
                         {convertedDate}

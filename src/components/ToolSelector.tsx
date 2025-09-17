@@ -1,14 +1,8 @@
-import type React from "react";
-
-interface Tool {
-    id: number;
-    name: string;
-    component: React.ReactElement;
-}
+import type { ToolConfig } from "../interfaces/tool";
 
 interface ToolSelectorProps {
-    tools: Tool[];
-    onSelect: (tool: Tool) => void;
+    tools: ToolConfig[];
+    onSelect: (tool: ToolConfig) => void;
 }
 
 export default function ToolSelector({ tools, onSelect }: ToolSelectorProps) {

@@ -1,39 +1,35 @@
-import { useState } from "react";
-import type { ReactElement } from "react";
+import { createElement, useState } from "react";
 import ToolCard from "../components/ToolCard";
 import ToolSelector from "../components/ToolSelector";
 import StringTool from "../components/StringTool";
 import JsonTool from "../components/JsonTool";
 import EpochTool from "../components/EpochTool";
-
-interface Tool {
-    id: number;
-    name: string;
-    component: ReactElement;
-    color?: string;
-}
-
-interface SelectedTool extends Tool {
-    instanceId: number;
-}
-
-const tools: Tool[] = [
-    { id: 1, name: "String Tool", component: <StringTool /> },
-    { id: 2, name: "JSON Tool", component: <JsonTool /> },
-    { id: 3, name: "Epoch Tool", component: <EpochTool /> },
+import type { ToolConfig, ActiveTool } from "../interfaces/tool";
+const tools: ToolConfig[] = [
+    { id: 1, name: "String Tool", component: StringTool },
+    { id: 2, name: "JSON Tool", component: JsonTool },
+    { id: 3, name: "Epoch Tool", component: EpochTool },
     // { id: 3, name: "Tool 3", component: <div>Tool 3 Content</div> },
     // { id: 4, name: "Tool 4", component: <div>Tool 4 Content</div> },
 ];
 
 export default function HomePage() {
-    const [selectedTools, setSelectedTools] = useState<SelectedTool[]>([]);
+    const [selectedTools, setSelectedTools] = useState<ActiveTool[]>([]);
 
-    const addTool = (tool: Tool) => {
+    const addTool = (tool: ToolConfig) => {
         const color = randomColor();
-        setSelectedTools((prev) => [
-            ...prev,
-            { ...tool, instanceId: Date.now(), color },
-        ]);
+        const instanceId = Date.now();
+        const component = createElement(tool.component);
+
+        const activeTool: ActiveTool = {
+            id: tool.id,
+            name: tool.name,
+            component,
+            instanceId,
+            color,
+        };
+
+        setSelectedTools((prev) => [...prev, activeTool]);
     };
 
     const removeTool = (instanceId: number) => {
@@ -52,7 +48,7 @@ export default function HomePage() {
                 <ToolSelector tools={tools} onSelect={addTool} />
 
                 <div className="grid-cols-1">
-                    {selectedTools.map((tool: SelectedTool) => (
+                    {selectedTools.map((tool) => (
                         <ToolCard key={tool.instanceId} tool={tool} onRemove={removeTool} />
                     ))}
                 </div>

@@ -1,19 +1,11 @@
-import type React from "react";
+import type { ActiveTool } from "../interfaces/tool";
 
 interface ToolCardProps {
-    tool: {
-        id: number;
-        name: string;
-        component: React.ReactElement;
-        instanceId: number;
-        color?: string;
-    };
+    tool: ActiveTool;
     onRemove: (instanceId: number) => void;
 }
 
 export default function ToolCard({ tool, onRemove }: ToolCardProps) {
-    console.log(tool.color);
-    
     return (
         <div className={`relative ${tool.color} p-6 rounded-lg shadow-lg mb-4`}>
 

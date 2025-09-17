@@ -1,69 +1,32 @@
-# React + TypeScript + Vite
+# Multi Tool Workbench
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A small productivity playground that lets you spin up multiple utilities side by side. The current line-up includes helpers for string manipulation, JSON inspection, and epoch timestamp conversions.
 
-Currently, two official plugins are available:
+## Tech Stack at a Glance
+- React 18 + TypeScript (TSX components throughout)
+- Vite for bundling and dev server
+- Tailwind CSS utility classes for styling
+- pnpm for dependency management
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Available Tools
+| Tool | What it does |
+| --- | --- |
+| String Tool | Quickly split, trim, quote, and reformat delimited strings. |
+| JSON Tool | View and validate JSON snippets. |
+| Epoch Tool | Live epoch ticker with conversion to human-readable timestamps. |
 
-## Expanding the ESLint configuration
+Each tool is defined through a small `ToolConfig` (see `src/interfaces/tool.ts`) so adding a new utility is as simple as registering a component.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Development
+```bash
+pnpm install        # install dependencies
+pnpm run dev        # start Vite dev server
+pnpm run build      # type-check and build for production
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Project Notes
+- Tool selection happens in `src/routes/HomePage.tsx`; each selection instantiates a fresh component instance, so tools keep their own state.
+- Shared type definitions live under `src/interfaces` to avoid duplicated shapes and keep the tool registry consistent.
+- Tailwind classes are defined inline; adjust `src/index.css` or `tailwind.config` (if added later) for global tweaks.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Feel free to extend the toolbox with more utilities—drop a component in `src/components`, register it in the `tools` array, and you’re ready to go.

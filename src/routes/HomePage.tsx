@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ReactElement } from "react";
 import ToolCard from "../components/ToolCard";
 import ToolSelector from "../components/ToolSelector";
 import StringTool from "../components/StringTool";
@@ -8,7 +9,7 @@ import EpochTool from "../components/EpochTool";
 interface Tool {
     id: number;
     name: string;
-    component: React.ReactElement;
+    component: ReactElement;
     color?: string;
 }
 
@@ -28,12 +29,11 @@ export default function HomePage() {
     const [selectedTools, setSelectedTools] = useState<SelectedTool[]>([]);
 
     const addTool = (tool: Tool) => {
-        // if (selectedTools.length < 3) {
-            
-        let col = randomColor();
-        console.log("const addTool = (tool: Tool) => {" + col);
-            setSelectedTools((prev) => [...prev, { ...tool, instanceId: Date.now() , color:col }]);
-        // }
+        const color = randomColor();
+        setSelectedTools((prev) => [
+            ...prev,
+            { ...tool, instanceId: Date.now(), color },
+        ]);
     };
 
     const removeTool = (instanceId: number) => {
@@ -87,5 +87,3 @@ const colors = [
   ];
 
 const randomColor = () => colors[Math.floor(Math.random() * colors.length)];
-
-// }

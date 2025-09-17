@@ -117,11 +117,13 @@ export default function EpochTool() {
                         Currently showing {useUtc ? "UTC" : "local"} time
                     </span>
                 </div>
-                {convertedDate && (
-                    <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                        {convertedDate}
-                    </p>
-                )}
+                <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700 min-h-[3rem] flex items-center">
+                    {convertedDate || (
+                        <span className="text-slate-400">
+                            Converted date will appear here
+                        </span>
+                    )}
+                </p>
             </div>
         </div>
     );

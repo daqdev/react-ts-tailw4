@@ -6,7 +6,7 @@ interface ToolCardProps {
         name: string;
         component: React.ReactElement;
         instanceId: number;
-        color: string;
+        color?: string;
     };
     onRemove: (instanceId: number) => void;
 }

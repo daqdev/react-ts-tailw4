@@ -3,6 +3,7 @@ import ToolCard from "../components/ToolCard";
 import ToolSelector from "../components/ToolSelector";
 import StringTool from "../components/StringTool";
 import JsonTool from "../components/JsonTool";
+import EpochTool from "../components/EpochTool";
 
 interface Tool {
     id: number;
@@ -18,6 +19,7 @@ interface SelectedTool extends Tool {
 const tools: Tool[] = [
     { id: 1, name: "String Tool", component: <StringTool /> },
     { id: 2, name: "JSON Tool", component: <JsonTool /> },
+    { id: 3, name: "Epoch Tool", component: <EpochTool /> },
     // { id: 3, name: "Tool 3", component: <div>Tool 3 Content</div> },
     // { id: 4, name: "Tool 4", component: <div>Tool 4 Content</div> },
 ];

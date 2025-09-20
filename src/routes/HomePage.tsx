@@ -58,11 +58,6 @@ export default function HomePage() {
 }
 
 const colors = [
-    'bg-slate-50',
-    'bg-gray-50',
-    'bg-zinc-50',
-    'bg-neutral-50',
-    'bg-stone-50',
     'bg-red-50',
     'bg-orange-50',
     'bg-amber-50',
@@ -73,7 +68,6 @@ const colors = [
     'bg-teal-50',
     'bg-cyan-50',
     'bg-sky-50',
-    'bg-blue-50',
     'bg-indigo-50',
     'bg-violet-50',
     'bg-purple-50',

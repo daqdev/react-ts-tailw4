@@ -40,6 +40,8 @@ export default function ToolCard({ tool, onRemove }: ToolCardProps) {
                 <div
                     ref={confirmRef}
                     className="absolute bottom-full right-2 mb-2 p-2 rounded-md bg-gray-800 text-white"
+                    role="dialog"
+                    aria-modal="true"
                 >
                     <button
                         onClick={() => onRemove(tool.instanceId)}
@@ -52,6 +54,8 @@ export default function ToolCard({ tool, onRemove }: ToolCardProps) {
             <button
                 onClick={() => setIsConfirming(true)}
                 className="absolute top-2 right-2 p-1 rounded-md bg-red-500 text-white hover:bg-red-600"
+                aria-haspopup="true"
+                aria-expanded={isConfirming}
             >
                 <svg
                     xmlns="http://www.w3.org/2000/svg"

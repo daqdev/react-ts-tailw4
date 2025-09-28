@@ -33,9 +33,7 @@ export default function HomePage() {
     };
 
     const removeTool = (instanceId: number) => {
-        if (window.confirm("Are you sure you want to close this tool?")) {
-            setSelectedTools((prev) => prev.filter((t) => t.instanceId !== instanceId));
-        }
+        setSelectedTools((prev) => prev.filter((t) => t.instanceId !== instanceId));
     };
 
     return (

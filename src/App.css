@@ -60,6 +60,11 @@
   font-family: monospace;
 }
 
+.flex-container {
+  display: flex;
+  gap: 1rem;
+}
+
 .json-output-container {
   position: relative;
 }
@@ -111,4 +116,25 @@
 .error-message {
   color: red;
   margin-top: 0.5rem;
+}
+
+.template-drop-zone {
+  border: 2px dashed #ccc;
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  width: 200px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.template-drop-zone.valid {
+  background-color: #d4edda;
+}
+
+.template-drop-zone.invalid {
+  background-color: #f8d7da;
 }

@@ -5,19 +5,32 @@ const JsonTool: React.FC = () => {
   const [formattedJson, setFormattedJson] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isTemplateDragging, setIsTemplateDragging] = useState(false);
+  const [validationStatus, setValidationStatus] = useState<'valid' | 'invalid' | 'none'>('none');
 
-  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>, isTemplateDropZone: boolean = false) => {
     event.preventDefault();
-    setIsDragging(true);
+    event.stopPropagation();
+    if (isTemplateDropZone) {
+      setIsTemplateDragging(true);
+    } else {
+      setIsDragging(true);
+    }
   };
 
-  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>, isTemplateDropZone: boolean = false) => {
     event.preventDefault();
-    setIsDragging(false);
+    event.stopPropagation();
+    if (isTemplateDropZone) {
+      setIsTemplateDragging(false);
+    } else {
+      setIsDragging(false);
+    }
   };
 
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
+    event.stopPropagation();
     setIsDragging(false);
 
     const file = event.dataTransfer.files[0];
@@ -35,6 +48,60 @@ const JsonTool: React.FC = () => {
       }
     }
   };
+
+          const handleTemplateDrop = (event: React.DragEvent<HTMLDivElement>) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setIsTemplateDragging(false);      const file = event.dataTransfer.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        console.log(1231);
+        const text = e.target?.result as string;
+        if (validateTemplate(text)) {
+          setValidationStatus('valid');
+          console.log('Template validation: Valid');
+        } else {
+          setValidationStatus('invalid');
+          console.log('Template validation: Invalid');
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const validateTemplate = (text: string): boolean => {
+    try {
+      const parsed = JSON.parse(text);
+
+      if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.mandatoryFields)) {
+        return false;
+      }
+
+      if (parsed.mandatoryFields.length === 0) {
+        return true; // Empty mandatoryFields array is valid
+      }
+
+      for (const field of parsed.mandatoryFields) {
+        if (
+          typeof field !== 'object' ||
+          !Object.prototype.hasOwnProperty.call(field, 'key') ||
+          !Object.prototype.hasOwnProperty.call(field, 'type') ||
+          !Object.prototype.hasOwnProperty.call(field, 'path') ||
+          typeof field.key !== 'string' ||
+          typeof field.type !== 'string' ||
+          typeof field.path !== 'string'
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
 
 
   useEffect(() => {
@@ -80,20 +147,30 @@ const JsonTool: React.FC = () => {
 
   return (
     <div className="json-tool">
-      <div
-        className={`drop-zone ${isDragging ? 'drop-zone-dragging' : ''}`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        <textarea
-          className="json-input"
-          value={inputJson}
-          onChange={handleInputChange}
-          placeholder="Paste your JSON here or drop a file..."
-        />
-        <div className="drop-zone-placeholder">
-          <p>Paste your JSON here or drop a file</p>
+      <div className="flex-container">
+        <div
+          className={`drop-zone ${isDragging ? 'drop-zone-dragging' : ''}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <textarea
+            className="json-input"
+            value={inputJson}
+            onChange={handleInputChange}
+            placeholder="Paste your JSON here or drop a file..."
+          />
+          <div className="drop-zone-placeholder">
+            <p>Paste your JSON here or drop a file</p>
+          </div>
+        </div>
+        <div
+          className={`template-drop-zone ${validationStatus} ${isTemplateDragging ? 'drop-zone-dragging' : ''}`}
+          onDragOver={(event) => handleDragOver(event, true)}
+          onDragLeave={(event) => handleDragLeave(event, true)}
+          onDrop={handleTemplateDrop}
+        >
+          <p>Drop Template File</p>
         </div>
       </div>
       <div className="json-output-container">

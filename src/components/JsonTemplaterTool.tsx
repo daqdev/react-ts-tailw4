@@ -9,16 +9,16 @@ const JsonTemplaterTool: React.FC = () => {
   const [mandatoryFields, setMandatoryFields] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    const buildTree = (data: any, path: string): TreeNode => {
+    const buildTree = (data: unknown, path: string): TreeNode => {
       const type = Array.isArray(data) ? 'array' : typeof data;
       const children: TreeNode[] = [];
 
       if (type === 'object' && data !== null) {
-        for (const key in data) {
-          children.push(buildTree(data[key], `${path}.${key}`));
+        for (const key in (data as Record<string, unknown>)) {
+          children.push(buildTree((data as Record<string, unknown>)[key], `${path}.${key}`));
         }
-      } else if (type === 'array' && data.length > 0 && typeof data[0] === 'object') {
-        children.push(buildTree(data[0], `${path}[]`));
+      } else if (type === 'array' && (data as unknown[]).length > 0 && typeof (data as unknown[])[0] === 'object') {
+        children.push(buildTree((data as unknown[])[0], `${path}[]`));
       }
 
       return {

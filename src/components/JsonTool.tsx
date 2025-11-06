@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import type { Template } from '../interfaces/template';
 
 const JsonTool: React.FC = () => {
   const [inputJson, setInputJson] = useState('');
@@ -7,6 +8,8 @@ const JsonTool: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [isTemplateDragging, setIsTemplateDragging] = useState(false);
   const [validationStatus, setValidationStatus] = useState<'valid' | 'invalid' | 'none'>('none');
+  const [template, setTemplate] = useState<Template | null>(null);
+  const [missingFields, setMissingFields] = useState<Set<string>>(new Set());
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>, isTemplateDropZone: boolean = false) => {
     event.preventDefault();
@@ -60,9 +63,11 @@ const JsonTool: React.FC = () => {
         const text = e.target?.result as string;
         if (validateTemplate(text)) {
           setValidationStatus('valid');
+          setTemplate(JSON.parse(text));
           console.log('Template validation: Valid');
         } else {
           setValidationStatus('invalid');
+          setTemplate(null);
           console.log('Template validation: Invalid');
         }
       };
@@ -104,11 +109,61 @@ const JsonTool: React.FC = () => {
 
 
 
+  const validateJsonAgainstTemplate = (json: string, template: Template): Set<string> => {
+    const missing = new Set<string>();
+    if (!template || !template.mandatoryFields || template.mandatoryFields.length === 0) {
+      return missing;
+    }
+
+    let parsedJson: unknown;
+    try {
+      parsedJson = JSON.parse(json);
+    } catch {
+      return missing; // If JSON is invalid, all fields are effectively missing or cannot be validated
+    }
+
+    template.mandatoryFields.forEach(field => {
+      const pathParts = field.path.split('.');
+      let current: unknown = parsedJson;
+      let found = true;
+
+      for (let i = 0; i < pathParts.length; i++) {
+        const part = pathParts[i];
+        if (part === 'root') {
+          continue;
+        }
+
+        if (part.endsWith('[]')) { // Handle array notation
+          const arrayKey = part.slice(0, -2);
+          if (!current || typeof current !== 'object' || !Object.prototype.hasOwnProperty.call(current, arrayKey) || !Array.isArray((current as Record<string, unknown>)[arrayKey]) || ((current as Record<string, unknown>)[arrayKey] as unknown[]).length === 0) {
+            found = false;
+            break;
+          }
+          // For simplicity, we just check if the array exists and has elements.
+          // More complex validation would involve checking each element.
+          current = ((current as Record<string, unknown>)[arrayKey] as unknown[])[0]; // Check against the first element
+        } else if (current && typeof current === 'object' && Object.prototype.hasOwnProperty.call(current, part)) {
+          current = (current as Record<string, unknown>)[part];
+        } else {
+          found = false;
+          break;
+        }
+      }
+
+      if (!found) {
+        missing.add(field.path);
+      }
+    });
+
+    return missing;
+  };
+
   useEffect(() => {
     const handler = setTimeout(() => {
       if (inputJson.trim() === '') {
         setFormattedJson('');
         setError(null);
+        setMissingFields(new Set());
         return;
       }
 
@@ -116,6 +171,13 @@ const JsonTool: React.FC = () => {
         const parsed = JSON.parse(inputJson);
         setFormattedJson(JSON.stringify(parsed, null, 2));
         setError(null);
+
+        if (template) {
+          setMissingFields(validateJsonAgainstTemplate(inputJson, template));
+        } else {
+          setMissingFields(new Set());
+        }
+
       } catch {
         setError('Invalid JSON format. Formatting as much as possible.');
         // Attempt to format what we can
@@ -129,13 +191,14 @@ const JsonTool: React.FC = () => {
           .replace(/\b/g, '\b')
           .replace(/\f/g, '\f');
         setFormattedJson(partiallyFormatted);
+        setMissingFields(new Set());
       }
     }, 500); // 500ms delay
 
     return () => {
       clearTimeout(handler);
     };
-  }, [inputJson]);
+  }, [inputJson, template]);
 
   const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputJson(event.target.value);
@@ -175,7 +238,7 @@ const JsonTool: React.FC = () => {
       </div>
       <div className="json-output-container">
         <textarea
-          className="json-output"
+          className={`json-output ${missingFields.size > 0 ? 'validation-error' : ''}`}
           value={formattedJson}
           readOnly
           placeholder="Formatted JSON will appear here..."
@@ -184,6 +247,11 @@ const JsonTool: React.FC = () => {
           Copy Formatted JSON
         </button>
         {error && <div className="error-message">{error}</div>}
+        {missingFields.size > 0 && (
+          <div className="error-message">
+            Missing mandatory fields: {Array.from(missingFields).join(', ')}
+          </div>
+        )}
       </div>
     </div>
   );

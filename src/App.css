@@ -118,6 +118,10 @@
   margin-top: 0.5rem;
 }
 
+.json-output.validation-error {
+  border: 1px solid red;
+}
+
 .template-drop-zone {
   border: 2px dashed #ccc;
   border-radius: 10px;

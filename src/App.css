@@ -64,6 +64,34 @@
   position: relative;
 }
 
+.drop-zone {
+  position: relative;
+  border: 2px dashed #ccc;
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.drop-zone-dragging {
+  background-color: #f0f0f0;
+  border-style: solid;
+}
+
+.drop-zone-placeholder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #aaa;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+.drop-zone:hover .drop-zone-placeholder {
+  opacity: 0;
+}
+
 .copy-button {
   position: absolute;
   top: 0.5rem;

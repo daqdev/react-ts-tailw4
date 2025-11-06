@@ -1,15 +1,169 @@
 import React, { useState, useEffect } from 'react';
+import type { Template } from '../interfaces/template';
 
 const JsonTool: React.FC = () => {
   const [inputJson, setInputJson] = useState('');
   const [formattedJson, setFormattedJson] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isTemplateDragging, setIsTemplateDragging] = useState(false);
+  const [validationStatus, setValidationStatus] = useState<'valid' | 'invalid' | 'none'>('none');
+  const [template, setTemplate] = useState<Template | null>(null);
+  const [missingFields, setMissingFields] = useState<Set<string>>(new Set());
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>, isTemplateDropZone: boolean = false) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (isTemplateDropZone) {
+      setIsTemplateDragging(true);
+    } else {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>, isTemplateDropZone: boolean = false) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (isTemplateDropZone) {
+      setIsTemplateDragging(false);
+    } else {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+
+    const file = event.dataTransfer.files[0];
+
+    if (file) {
+      if (file.type === 'text/plain' || file.type === 'application/json') {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const text = e.target?.result as string;
+          setInputJson(text);
+        };
+        reader.readAsText(file);
+      } else {
+        setError('Invalid file type. Please drop a .txt or .json file.');
+      }
+    }
+  };
+
+          const handleTemplateDrop = (event: React.DragEvent<HTMLDivElement>) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setIsTemplateDragging(false);      const file = event.dataTransfer.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        console.log(1231);
+        const text = e.target?.result as string;
+        if (validateTemplate(text)) {
+          setValidationStatus('valid');
+          setTemplate(JSON.parse(text));
+          console.log('Template validation: Valid');
+        } else {
+          setValidationStatus('invalid');
+          setTemplate(null);
+          console.log('Template validation: Invalid');
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const validateTemplate = (text: string): boolean => {
+    try {
+      const parsed = JSON.parse(text);
+
+      if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.mandatoryFields)) {
+        return false;
+      }
+
+      if (parsed.mandatoryFields.length === 0) {
+        return true; // Empty mandatoryFields array is valid
+      }
+
+      for (const field of parsed.mandatoryFields) {
+        if (
+          typeof field !== 'object' ||
+          !Object.prototype.hasOwnProperty.call(field, 'key') ||
+          !Object.prototype.hasOwnProperty.call(field, 'type') ||
+          !Object.prototype.hasOwnProperty.call(field, 'path') ||
+          typeof field.key !== 'string' ||
+          typeof field.type !== 'string' ||
+          typeof field.path !== 'string'
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+
+
+  const validateJsonAgainstTemplate = (json: string, template: Template): Set<string> => {
+    const missing = new Set<string>();
+    if (!template || !template.mandatoryFields || template.mandatoryFields.length === 0) {
+      return missing;
+    }
+
+    let parsedJson: unknown;
+    try {
+      parsedJson = JSON.parse(json);
+    } catch {
+      return missing; // If JSON is invalid, all fields are effectively missing or cannot be validated
+    }
+
+    template.mandatoryFields.forEach(field => {
+      const pathParts = field.path.split('.');
+      let current: unknown = parsedJson;
+      let found = true;
+
+      for (let i = 0; i < pathParts.length; i++) {
+        const part = pathParts[i];
+        if (part === 'root') {
+          continue;
+        }
+
+        if (part.endsWith('[]')) { // Handle array notation
+          const arrayKey = part.slice(0, -2);
+          if (!current || typeof current !== 'object' || !Object.prototype.hasOwnProperty.call(current, arrayKey) || !Array.isArray((current as Record<string, unknown>)[arrayKey]) || ((current as Record<string, unknown>)[arrayKey] as unknown[]).length === 0) {
+            found = false;
+            break;
+          }
+          // For simplicity, we just check if the array exists and has elements.
+          // More complex validation would involve checking each element.
+          current = ((current as Record<string, unknown>)[arrayKey] as unknown[])[0]; // Check against the first element
+        } else if (current && typeof current === 'object' && Object.prototype.hasOwnProperty.call(current, part)) {
+          current = (current as Record<string, unknown>)[part];
+        } else {
+          found = false;
+          break;
+        }
+      }
+
+      if (!found) {
+        missing.add(field.path);
+      }
+    });
+
+    return missing;
+  };
 
   useEffect(() => {
     const handler = setTimeout(() => {
       if (inputJson.trim() === '') {
         setFormattedJson('');
         setError(null);
+        setMissingFields(new Set());
         return;
       }
 
@@ -17,26 +171,34 @@ const JsonTool: React.FC = () => {
         const parsed = JSON.parse(inputJson);
         setFormattedJson(JSON.stringify(parsed, null, 2));
         setError(null);
-      } catch (e) {
+
+        if (template) {
+          setMissingFields(validateJsonAgainstTemplate(inputJson, template));
+        } else {
+          setMissingFields(new Set());
+        }
+
+      } catch {
         setError('Invalid JSON format. Formatting as much as possible.');
         // Attempt to format what we can
         const partiallyFormatted = inputJson
-          .replace(/\\n/g, '\n')
-          .replace(/\\'/g, "'")
-          .replace(/\\\"/g, '"')
-          .replace(/\\&/g, '&')
-          .replace(/\\r/g, '\r')
-          .replace(/\\t/g, '\t')
-          .replace(/\\b/g, '\b')
-          .replace(/\\f/g, '\f');
+          .replace(/\n/g, '\n')
+          .replace(/'/g, "'")
+          .replace(/"/g, '"')
+          .replace(/&/g, '&')
+          .replace(/\r/g, '\r')
+          .replace(/\t/g, '\t')
+          .replace(/\b/g, '\b')
+          .replace(/\f/g, '\f');
         setFormattedJson(partiallyFormatted);
+        setMissingFields(new Set());
       }
     }, 500); // 500ms delay
 
     return () => {
       clearTimeout(handler);
     };
-  }, [inputJson]);
+  }, [inputJson, template]);
 
   const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputJson(event.target.value);
@@ -48,15 +210,35 @@ const JsonTool: React.FC = () => {
 
   return (
     <div className="json-tool">
-      <textarea
-        className="json-input"
-        value={inputJson}
-        onChange={handleInputChange}
-        placeholder="Paste your JSON here..."
-      />
+      <div className="flex-container">
+        <div
+          className={`drop-zone ${isDragging ? 'drop-zone-dragging' : ''}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <textarea
+            className="json-input"
+            value={inputJson}
+            onChange={handleInputChange}
+            placeholder="Paste your JSON here or drop a file..."
+          />
+          <div className="drop-zone-placeholder">
+            <p>Paste your JSON here or drop a file</p>
+          </div>
+        </div>
+        <div
+          className={`template-drop-zone ${validationStatus} ${isTemplateDragging ? 'drop-zone-dragging' : ''}`}
+          onDragOver={(event) => handleDragOver(event, true)}
+          onDragLeave={(event) => handleDragLeave(event, true)}
+          onDrop={handleTemplateDrop}
+        >
+          <p>Drop Template File</p>
+        </div>
+      </div>
       <div className="json-output-container">
         <textarea
-          className="json-output"
+          className={`json-output ${missingFields.size > 0 ? 'validation-error' : ''}`}
           value={formattedJson}
           readOnly
           placeholder="Formatted JSON will appear here..."
@@ -65,6 +247,11 @@ const JsonTool: React.FC = () => {
           Copy Formatted JSON
         </button>
         {error && <div className="error-message">{error}</div>}
+        {missingFields.size > 0 && (
+          <div className="error-message">
+            Missing mandatory fields: {Array.from(missingFields).join(', ')}
+          </div>
+        )}
       </div>
     </div>
   );

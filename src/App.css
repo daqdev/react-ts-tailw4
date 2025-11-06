@@ -60,8 +60,41 @@
   font-family: monospace;
 }
 
+.flex-container {
+  display: flex;
+  gap: 1rem;
+}
+
 .json-output-container {
   position: relative;
+}
+
+.drop-zone {
+  position: relative;
+  border: 2px dashed #ccc;
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.drop-zone-dragging {
+  background-color: #f0f0f0;
+  border-style: solid;
+}
+
+.drop-zone-placeholder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #aaa;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+.drop-zone:hover .drop-zone-placeholder {
+  opacity: 0;
 }
 
 .copy-button {
@@ -83,4 +116,29 @@
 .error-message {
   color: red;
   margin-top: 0.5rem;
+}
+
+.json-output.validation-error {
+  border: 1px solid red;
+}
+
+.template-drop-zone {
+  border: 2px dashed #ccc;
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  width: 200px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.template-drop-zone.valid {
+  background-color: #d4edda;
+}
+
+.template-drop-zone.invalid {
+  background-color: #f8d7da;
 }

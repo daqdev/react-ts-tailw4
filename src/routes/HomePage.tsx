@@ -4,11 +4,13 @@ import ToolSelector from "../components/ToolSelector";
 import StringTool from "../components/StringTool";
 import JsonTool from "../components/JsonTool";
 import EpochTool from "../components/EpochTool";
+import JsonTemplaterTool from '../components/JsonTemplaterTool';
 import type { ToolConfig, ActiveTool } from "../interfaces/tool";
 const tools: ToolConfig[] = [
     { id: 1, name: "String Tool", component: StringTool },
     { id: 2, name: "JSON Tool", component: JsonTool },
     { id: 3, name: "Epoch Tool", component: EpochTool },
+    { id: 4, name: "JSON Templater Tool", component: JsonTemplaterTool },
     // { id: 3, name: "Tool 3", component: <div>Tool 3 Content</div> },
     // { id: 4, name: "Tool 4", component: <div>Tool 4 Content</div> },
 ];

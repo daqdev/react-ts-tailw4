@@ -49,18 +49,18 @@ const JsonTool: React.FC = () => {
         const parsed = JSON.parse(inputJson);
         setFormattedJson(JSON.stringify(parsed, null, 2));
         setError(null);
-      } catch (e) {
+      } catch {
         setError('Invalid JSON format. Formatting as much as possible.');
         // Attempt to format what we can
         const partiallyFormatted = inputJson
-          .replace(/\\n/g, '\n')
-          .replace(/\\'/g, "'")
-          .replace(/\\\"/g, '"')
-          .replace(/\\&/g, '&')
-          .replace(/\\r/g, '\r')
-          .replace(/\\t/g, '\t')
-          .replace(/\\b/g, '\b')
-          .replace(/\\f/g, '\f');
+          .replace(/\n/g, '\n')
+          .replace(/'/g, "'")
+          .replace(/"/g, '"')
+          .replace(/&/g, '&')
+          .replace(/\r/g, '\r')
+          .replace(/\t/g, '\t')
+          .replace(/\b/g, '\b')
+          .replace(/\f/g, '\f');
         setFormattedJson(partiallyFormatted);
       }
     }, 500); // 500ms delay

@@ -90,7 +90,7 @@ export default function EpochTool() {
             await navigator.clipboard.writeText(displayedEpoch);
             setCopyLabel("Copied!");
             window.setTimeout(() => setCopyLabel("Copy"), 1500);
-        } catch (error) {
+        } catch {
             setCopyLabel("Failed");
             window.setTimeout(() => setCopyLabel("Copy"), 1500);
         }

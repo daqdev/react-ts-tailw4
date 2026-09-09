@@ -7,9 +7,9 @@ export default function NotFoundPage() {
       <div className="space-y-4">
         <p className="text-sm font-medium text-muted-foreground">404</p>
         <h1 className="text-3xl font-semibold tracking-tight">Page not found</h1>
-        <p className="text-muted-foreground">That route doesn’t exist in this template.</p>
+        <p className="text-muted-foreground">That route doesn’t exist.</p>
         <Button asChild>
-          <Link to="/">Back to dashboard</Link>
+          <Link to="/">Back to notes</Link>
         </Button>
       </div>
     </div>

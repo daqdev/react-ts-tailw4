@@ -1,4 +1,4 @@
-import { Component, FormInput, LayoutDashboard, Settings, type LucideIcon } from 'lucide-react'
+import { Bot, Component, Network, NotebookPen, Settings, type LucideIcon } from 'lucide-react'
 
 export interface NavItem {
   title: string
@@ -16,10 +16,11 @@ export interface NavSection {
 /** Single source of truth for the sidebar, the mobile drawer and the page titles. */
 export const navSections: NavSection[] = [
   {
-    title: 'Application',
+    title: 'Knowledge base',
     items: [
-      { title: 'Dashboard', to: '/', icon: LayoutDashboard },
-      { title: 'Form', to: '/form', icon: FormInput },
+      { title: 'Notes', to: '/', icon: NotebookPen },
+      { title: 'Graph', to: '/graph', icon: Network },
+      { title: 'Agent view', to: '/agent', icon: Bot },
     ],
   },
   {
@@ -32,7 +33,7 @@ export const navSections: NavSection[] = [
 ]
 
 export const appConfig = {
-  name: 'App Template',
-  shortName: 'AT',
-  description: 'React + TypeScript + Tailwind starter',
+  name: 'Notework',
+  shortName: 'NW',
+  description: 'Notes that build a knowledge graph',
 }

@@ -1,11 +1,19 @@
+import 'fake-indexeddb/auto'
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
 import { afterEach, vi } from 'vitest'
 
-afterEach(() => {
+afterEach(async () => {
   cleanup()
   localStorage.clear()
   document.documentElement.className = ''
+  // fake-indexeddb persists across tests in a file; start each one empty.
+  await new Promise<void>((resolve) => {
+    const request = indexedDB.deleteDatabase('knowledge-notes')
+    request.onsuccess = () => resolve()
+    request.onerror = () => resolve()
+    request.onblocked = () => resolve()
+  })
 })
 
 /**

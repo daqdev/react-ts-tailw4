@@ -66,6 +66,11 @@ src/
     └── sketch/                    Pure shape-recognition + canvas rendering helpers
         ├── geometry.ts            Point math, resampling, RDP simplification
         ├── shapes.ts              recognizeShape, tryAttachArrowHead
+        ├── pointCloud.ts          $Q multistroke recognizer
+        ├── glyphs.ts              Built-in 0–9 / A–Z templates
+        ├── characters.ts          Character recognizer, batch segmentation, word grouping
+        ├── learnedStore.ts        localStorage for learned corrections
+        ├── palette.ts             Light / chalkboard colors
         ├── elements.ts            SketchElement type, hit testing
         └── render.ts              rough.js / canvas drawing
 ```
@@ -146,7 +151,14 @@ Authors a template that JsonTool can later consume.
 ### 5.5 SmartCanvasTool — `src/components/SmartCanvasTool.tsx`
 Drawing canvas that tidies hand-drawn diagram shapes (BACKLOG §0, phase A). Everything runs locally; no ML model, no network.
 
-- **Modes:** *Smart* (recognize and snap), *Freehand* (keep strokes as drawn), *Eraser* (drag over elements to delete them; one undo step per drag).
+- **Modes:** *Shapes* (recognize and snap shapes), *Text* (handwriting → text, see below), *Freehand* (keep strokes as drawn), *Eraser* (drag over elements to delete them; one undo step per drag).
+- **Shortcut:** tapping left Shift (alone, while the tool has focus) toggles Shapes ↔ Text; from Freehand/Eraser it goes to Shapes. It fires on key-up and only if no other key was pressed and nothing was drawn meanwhile, so Ctrl+Shift+Z and Shift+drawing are unaffected; ignored while typing in an input. Right Shift does nothing.
+- **Text mode (BACKLOG §0 phase B):**
+  - Recognizer: `$Q` point-cloud recognizer (`src/lib/sketch/pointCloud.ts`), multistroke and stroke-order/direction invariant, ~2 ms per character. Built-in templates for `0–9` and `A–Z` are generated from stroke descriptions in `src/lib/sketch/glyphs.ts`. Matches with distance > 10 are rejected (kept as ink) instead of guessed.
+  - Everything written before a 700 ms pause is one batch. `segmentCharacters` (`src/lib/sketch/characters.ts`) clusters strokes whose horizontal extents overlap, then picks the split into characters with the lowest total recognition distance, so words can be written without pausing between letters and multi-cluster letters (`H`, `M`) still work.
+  - Characters become a `text` element (`glyphs[]`, each keeping its ink, score and alternatives). A character written to the right of the previous one, on the same line and within 5 s, is appended to the same text; a wider gap inserts a space.
+  - Correction: the status bar lists the batch's characters (least confident pre-selected), its alternatives and an "Other" field. Correcting — or naming ink that wasn't recognized — stores the ink as a new template in `localStorage` (`oktools.smartCanvas.learnedChars.v1`, max 300, via `learnedStore.ts`) and it's used right away. "Forget learned characters" clears them. "Keep as drawn" turns the batch back into ink.
+  - Measured on synthetic distorted handwriting: 100 % of characters with mild distortion, 92–95 % with strong distortion; most remaining errors are look-alikes (B/8, S/5, O/0).
 - **Recognition (`src/lib/sketch/shapes.ts`, pure):** `recognizeShape(stroke)` resamples the stroke to 64 points, then:
   - open strokes → line (straightness ≥ 0.9) or single-stroke arrow (straight shaft + short head whose barbs point back); both snap to multiples of 45° when within 8°;
   - closed strokes → compares an ellipse fit against a polygon fit (Ramer–Douglas–Peucker + removal of flat/crowded vertices): ellipse/circle, triangle, rectangle/square (made axis-aligned) or diamond.

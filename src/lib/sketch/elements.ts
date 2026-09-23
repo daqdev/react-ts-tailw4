@@ -10,10 +10,38 @@ export interface ElementStyle {
     seed: number;
 }
 
+/** One recognized character, keeping the ink it came from so it can be corrected or reverted. */
+export interface Glyph {
+    char: string;
+    strokes: Point[][];
+    alternatives: string[];
+    /** Recognition confidence, 0.5..1 (1 for spaces and user corrections). */
+    score: number;
+}
+
 export type SketchElement = { id: number; style: ElementStyle; raw?: Point[][] } & (
     | Shape
     | { kind: "freehand"; points: Point[] }
+    /** `x` is the left edge and `y` the baseline. */
+    | { kind: "text"; x: number; y: number; fontSize: number; glyphs: Glyph[] }
 );
+
+type TextElement = Extract<SketchElement, { kind: "text" }>;
+
+/** Average advance of the handwriting-style font, as a fraction of the font size. */
+const CHAR_ADVANCE = 0.62;
+
+export const textOf = (el: TextElement) => el.glyphs.map((g) => g.char).join("");
+
+/** Approximate box of a text element (no canvas needed to measure). */
+export function textBox(el: TextElement) {
+    return {
+        minX: el.x,
+        minY: el.y - 0.8 * el.fontSize,
+        maxX: el.x + CHAR_ADVANCE * el.fontSize * el.glyphs.length,
+        maxY: el.y + 0.2 * el.fontSize,
+    };
+}
 
 /** Outline of a polygon-like element as a closed list of vertices, or null for other kinds. */
 export function outline(el: SketchElement): Point[] | null {
@@ -49,6 +77,12 @@ export function distanceToElement(el: SketchElement, p: Point): number {
             const ry = Math.max(1, el.ry);
             const theta = Math.atan2((p.y - el.cy) / ry, (p.x - el.cx) / rx);
             return distance(p, { x: el.cx + rx * Math.cos(theta), y: el.cy + ry * Math.sin(theta) });
+        }
+        case "text": {
+            const box = textBox(el);
+            const dx = Math.max(box.minX - p.x, 0, p.x - box.maxX);
+            const dy = Math.max(box.minY - p.y, 0, p.y - box.maxY);
+            return Math.hypot(dx, dy);
         }
         case "freehand": {
             if (el.points.length === 1) return distance(p, el.points[0]);
@@ -86,6 +120,11 @@ export function contentExtent(elements: SketchElement[]): { maxX: number; maxY: 
             case "freehand":
                 points = el.points;
                 break;
+            case "text": {
+                const box = textBox(el);
+                points = [{ x: box.maxX, y: box.maxY }];
+                break;
+            }
             default:
                 points = outline(el)!;
         }

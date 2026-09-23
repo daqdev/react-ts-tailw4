@@ -22,6 +22,7 @@ There is no backend, no persistence, and no authentication. All work happens in 
 | Routing        | React Router DOM 7.7 (one route declared, no real navigation yet) |
 | Styling        | Tailwind CSS 4 via `@tailwindcss/vite`; plus some plain CSS classes (`json-tool`, `drop-zone`, …) for the JSON-related tools |
 | Bundler        | Vite 7 with `@vitejs/plugin-react`                                |
+| Drawing        | rough.js 4.6 (hand-drawn look in the Smart Canvas tool)           |
 | Linting        | ESLint 9 + `typescript-eslint`, plus `eslint-plugin-react-hooks` and `eslint-plugin-react-refresh` |
 | Package mgr    | pnpm (lockfile present)                                           |
 | Tests          | None — no test runner, no test files                              |
@@ -48,6 +49,7 @@ src/
 │   ├── JsonTool.tsx               Tool: JSON formatter + template validator
 │   ├── EpochTool.tsx              Tool: live epoch ticker + converter
 │   ├── JsonTemplaterTool.tsx      Tool: JSON → mandatory-field template
+│   ├── SmartCanvasTool.tsx        Tool: drawing canvas that tidies shapes
 │   ├── JsonTreeNode.tsx           Recursive tree node used by the templater
 │   ├── InputPanel.tsx             Shared input UI (used by StringTool)
 │   ├── ResultsPanel.tsx           Shared results UI (used by StringTool)
@@ -58,8 +60,14 @@ src/
 │   ├── template.ts                Template, TemplateField
 │   ├── jsonTemplater.ts           TreeNode
 │   └── interfaces.ts              Props for InputPanel / ResultsPanel
-└── hooks/
-    └── useTranslation.ts          Tiny i18n hook
+├── hooks/
+│   └── useTranslation.ts          Tiny i18n hook
+└── lib/
+    └── sketch/                    Pure shape-recognition + canvas rendering helpers
+        ├── geometry.ts            Point math, resampling, RDP simplification
+        ├── shapes.ts              recognizeShape, tryAttachArrowHead
+        ├── elements.ts            SketchElement type, hit testing
+        └── render.ts              rough.js / canvas drawing
 ```
 
 ---
@@ -71,7 +79,7 @@ src/
 - `src/App.tsx` wraps everything in `BrowserRouter` and declares a single route, `/` → `HomePage`. A second route for a `SprintWizardPage` is commented out.
 
 ### 4.2 Tool registry and instance model — `src/routes/HomePage.tsx`
-- Static array `tools: ToolConfig[]` registers the four available tools by `{ id, name, component }`.
+- Static array `tools: ToolConfig[]` registers the five available tools by `{ id, name, component }`.
 - State: `selectedTools: ActiveTool[]`.
 - `addTool(tool)`:
   - generates `instanceId = Date.now()`,
@@ -134,6 +142,23 @@ Authors a template that JsonTool can later consume.
 - **Tree build (`useEffect` on `inputJson`):** `buildTree(data, path)` recurses; objects expand each key under `path.key`; non-empty arrays-of-objects descend into the first element under `path[]`. Primitives become leaves with `type = typeof data`. Parse failures clear the tree.
 - **Template emission (`useEffect` on `mandatoryFields` / `treeData`):** traverses the tree and collects every node whose `path` is in `mandatoryFields` as `{ key, type, path }`, wraps them in `{ mandatoryFields: [...] }`, and writes the pretty-printed JSON to `templateJson`. The output schema therefore matches what JsonTool's `validateTemplate` expects.
 - **UI:** three stacked regions — input textarea, interactive tree (`JsonTreeNode` renders each node with a checkbox bound to `handleMandatoryChange`), and read-only template textarea.
+
+### 5.5 SmartCanvasTool — `src/components/SmartCanvasTool.tsx`
+Drawing canvas that tidies hand-drawn diagram shapes (BACKLOG §0, phase A). Everything runs locally; no ML model, no network.
+
+- **Modes:** *Smart* (recognize and snap), *Freehand* (keep strokes as drawn), *Eraser* (drag over elements to delete them; one undo step per drag).
+- **Recognition (`src/lib/sketch/shapes.ts`, pure):** `recognizeShape(stroke)` resamples the stroke to 64 points, then:
+  - open strokes → line (straightness ≥ 0.9) or single-stroke arrow (straight shaft + short head whose barbs point back); both snap to multiples of 45° when within 8°;
+  - closed strokes → compares an ellipse fit against a polygon fit (Ramer–Douglas–Peucker + removal of flat/crowded vertices): ellipse/circle, triangle, rectangle/square (made axis-aligned) or diamond.
+  - Returns `{ shape, name, score }` or `null` (stroke is then kept as freehand). Scores go from 0.5 (at threshold) to 1.
+  - `tryAttachArrowHead(line, stroke)` turns a line into an arrow when the next stroke (within 4 s) is a small head at one of its ends.
+- **Elements (`src/lib/sketch/elements.ts`):** flat `SketchElement[]` (`line`, `arrow`, `rectangle`, `ellipse`, `diamond`, `triangle`, `freehand`), each with a style that includes a fixed rough.js `seed` so redraws don't wobble, and the original `raw` strokes so "Keep as drawn" can revert a snap. `hitTest` is used by the eraser.
+- **Rendering (`src/lib/sketch/render.ts`):** rough.js (`roughjs` npm package) for shapes, smoothed quadratic path for freehand. Two stacked canvases: base (all elements, redrawn on change) and overlay (live stroke, drawn incrementally).
+- **State:** `history = { past, present, future }` for undo/redo (buttons, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z while the tool has focus), plus tool, color, stroke width, roughness and the last recognition status. Export to PNG on a white background.
+- **Canvas size:** the canvas fills the visible area (480 px tall in the card, the whole window in full screen) but never shrinks below its content (`contentExtent` + margin); when the content is larger than the view, the drawing area scrolls. There is no infinite canvas / pan / zoom yet.
+- **Full screen:** uses the Fullscreen API on the tool's container, with a fixed-overlay fallback when the API is refused (e.g. in an iframe). Esc (or the button) returns to the card view.
+- **Chalkboard theme (`src/lib/sketch/palette.ts`):** only the drawing area switches to a black background. Elements store a palette key (`ink`, `indigo`, …) rather than a hex color, and each key has a light and a chalkboard value, so toggling the theme recolors existing drawings. PNG export uses the current theme's background.
+- **UI strings** go through `useTranslation` (`canvas*` and `shape_*` keys).
 
 ---
 

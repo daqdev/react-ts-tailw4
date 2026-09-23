@@ -4,6 +4,80 @@ Ordered list of upcoming work. Pick tasks top-down; later tasks assume earlier o
 
 ---
 
+## 0. Smart Canvas tool — "Paint" that cleans up diagrams — ⚠️ PRIORITY: HIGHEST
+
+**Goal:** add a new tool to the tool registry (`src/routes/HomePage.tsx`) where the user draws with mouse / pen / touch and the app "tidies up" the strokes: rough boxes become clean rectangles, wobbly lines become straight lines or arrows, and handwritten letters/digits become text. Target use case: quickly sketching diagrams (boxes, circles, diamonds, lines, arrows, labels).
+
+**Hard constraints:**
+- **100 % local.** No remote services, no cloud OCR, no runtime CDN scripts. Everything bundled by Vite.
+- **Fast.** Recognition must run synchronously on pointer-up in a few ms (budget: < 5 ms per stroke group on a mid-range laptop). No heavy ML models in the first phases.
+- Order of work is **easiest + most performant first**; each phase ships something usable on its own.
+
+**Also not in scope for now:** tasks 1–4 below don't block this task. Still, put all recognition logic in pure modules under `src/lib/sketch/` (no React, no DOM) so it's easy to unit-test once task 2 lands — this matches the direction set in task 1.
+
+### 0.1 Reference prototype: `interactive_canvas_app.html` (repo root, untracked)
+
+A standalone HTML/JS prototype ("AI Smart Canvas"). Useful as a **UX reference**, not as code to port as-is.
+
+What's worth keeping:
+- UI concept: toolbar with *Smart / Raw / Select / Eraser*, color palette, stroke-width and roughness sliders, undo/redo, zoom/pan, PNG/SVG export, toast showing what was recognized + confidence.
+- Hand-drawn look for clean shapes using **rough.js** (MIT, ~9 KB gz). Add it as an npm dependency (`roughjs`) instead of the CDN.
+- Element model: a flat `elements[]` list of typed objects (`rectangle`, `circle`, `line`, `arrow`, `text`, `freehand`, …) redrawn from scratch on each change. Simple and good enough.
+- Two outputs for recognized text: re-draw as vector strokes vs. convert to an editable text element. We only need the **editable text** output — drop the vector-glyph path table.
+
+Problems found in the prototype (do **not** carry these over):
+- **Character recognition is effectively fake.** `recognizeCharacter` is a handful of if-rules: any closed round-ish stroke is `0`, any tall thin stroke is `1`, any open stroke with ≥ 2 corners is `Z`/`L`/`3`, and the fallback returns `A` with 75 % "confidence". The comment says "$1 Unistroke" but no $1 algorithm is implemented.
+- **Single-stroke only.** Each stroke is recognized in isolation, so multi-stroke characters (`E`, `T`, `A`, `4`, `X`, `+`…) and multi-stroke arrows (line + separate head) can never work.
+- Shape detection is fragile: corners are computed on raw (un-resampled) points with a fixed step of 4, so results depend on drawing speed; circle vs. polygon is decided only by corner count; arrowhead detection only looks at the last 12 raw points.
+- Confidence numbers are hard-coded constants, not scores.
+- Shapes are always resolved before characters, so small letters like `O`/`0`, `D`, `L` get turned into shapes.
+- `id: Date.now()` for elements (same collision issue as `instanceId`, see SPEC §8); undo stores a full `JSON.stringify` snapshot per action; `e.spaceKey` doesn't exist, so space-to-pan never works; mixes Tailwind CDN + global DOM state.
+
+### 0.2 Recommended approach (phased)
+
+**Phase A — Shapes mode (easiest, highest value).** ✅ Done — see SPEC §5.5. Corners are found with Ramer–Douglas–Peucker simplification plus cleanup instead of ShortStraw (simpler, same result on the test strokes); recognition takes ≤ 1 ms per stroke.
+- React component `src/components/SmartCanvasTool.tsx` with a `<canvas>`, Pointer Events (`pointerdown/move/up` covers mouse, pen and touch in one API; use `setPointerCapture`), toolbar, undo/redo, clear, PNG export. Register it in the `tools` array and add en/es/pt strings to `src/translations.ts`.
+- `src/lib/sketch/geometry.ts`: resample stroke to N equidistant points (as in $1), bounding box, path length, closedness.
+- `src/lib/sketch/shapes.ts`: heuristic shape classifier on the **resampled** stroke:
+  - line: straightness (chord / path length) > ~0.9;
+  - arrow: line + head detected either in the same stroke (tail hook) or as a **second stroke** drawn near the line end within a short time window;
+  - circle/ellipse: closed stroke with low variance of distance to centroid;
+  - rectangle / square / diamond / triangle: closed stroke, corners via **ShortStraw** (simple, fast, well-known corner finder) — 3 corners → triangle, 4 → rectangle or diamond depending on whether corners sit on bbox edges or bbox mid-points;
+  - otherwise keep as smoothed freehand.
+- Return a real score (e.g. fit error normalized to size) and only snap when above a threshold; otherwise keep the freehand stroke. Offer a one-click "undo snap" (keep the raw stroke in the element so it can be reverted).
+
+**Phase B — Text mode with a mode selector (letters & digits).**
+- Add a **mode selector**: `Shapes | Text`. Explicit mode is the most accurate and cheapest option, so it comes first.
+- Recognizer: **$Q (or $P) point-cloud recognizer** — multistroke, stroke-order and direction invariant, ~200 lines of TS, no model, sub-millisecond per match with a few hundred templates. Put it in `src/lib/sketch/pointCloud.ts`.
+- **Stroke grouping:** strokes belong to the same character while the pen goes down again within ~400–600 ms *and* near the current group's bbox; a pause or a far-away stroke closes the group and triggers recognition. Consecutive characters on the same baseline merge into one text element (word).
+- **Templates:** ship a default set for `0–9` and `A–Z` (a few samples each, stored as JSON in `src/lib/sketch/templates/`). Add a small "teach" UI: when the result is wrong, the user picks the right character and the stroke group is saved as a new template in `localStorage` — accuracy improves per user at zero cost.
+- Output: an editable text element positioned at the group's bbox, font size derived from bbox height.
+- Lowercase letters are **out of scope** for this phase (much more ambiguous with this technique); revisit after Phase D.
+
+**Phase C — Auto mode (detect everything together).**
+- Third option in the selector: `Auto`. Run both classifiers on each closed stroke group and pick by score + simple priors: small groups (height below ~2× current stroke-size-based threshold, or several strokes in quick succession) favour Text; large single strokes favour Shapes. Ambiguous → keep freehand rather than guess.
+- Shape-inside-shape context helps: strokes drawn inside a recognized box are very likely a label → favour Text.
+
+**Phase D — Transparent text field ("ink-to-text zone").**
+- The user drags out a text box (or double-clicks inside a shape) and gets a transparent overlay; everything written inside it is always treated as Text, grouped left-to-right into one string, and committed to that box's text on blur/Enter. The result stays editable with the keyboard.
+- This removes most Auto-mode ambiguity and is the natural way to label boxes and arrows.
+
+**Phase E (optional, only if $Q accuracy isn't enough).**
+- Local CNN character classifier trained on EMNIST, exported to ONNX and run with `onnxruntime-web` (WASM) or a hand-written tiny MLP. Still offline, but adds ~0.5–5 MB to the bundle and a lazy-loaded chunk — only consider after measuring Phase B/C accuracy with real users.
+
+### 0.3 Out of scope (for now)
+- Connectors that stay attached to shapes when moving them, snapping/alignment guides, multi-select, persistence to backend, collaboration.
+- Cursive / full-sentence handwriting recognition.
+
+**Done when (per phase):**
+- A: the Smart Canvas tool can be added from the tool selector; rectangle, square, circle, ellipse, diamond, triangle, line and arrow (single or two strokes) are snapped reliably; undo/redo and PNG export work; recognition runs locally in < 5 ms per stroke.
+- B: in Text mode, digits `0–9` and uppercase `A–Z` (single and multistroke) become editable text; the user can correct a result and the correction is learned.
+- C: Auto mode handles a simple diagram (boxes + arrows + short labels) without switching modes, falling back to freehand when unsure.
+- D: writing inside a transparent text field produces one editable string.
+- All phases: logic lives in `src/lib/sketch/*`, `pnpm build` and `pnpm lint` are green, `SPEC.md` is updated with the new tool.
+
+---
+
 ## 1. Testability study (do this first)
 
 **Goal:** decide whether — and where — to refactor before we start writing tests. The output of this task is a short written recommendation, not code.

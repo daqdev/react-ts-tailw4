@@ -35,7 +35,7 @@ Problems found in the prototype (do **not** carry these over):
 
 ### 0.2 Recommended approach (phased)
 
-**Phase A — Shapes mode (easiest, highest value).**
+**Phase A — Shapes mode (easiest, highest value).** ✅ Done — see SPEC §5.5. Corners are found with Ramer–Douglas–Peucker simplification plus cleanup instead of ShortStraw (simpler, same result on the test strokes); recognition takes ≤ 1 ms per stroke.
 - React component `src/components/SmartCanvasTool.tsx` with a `<canvas>`, Pointer Events (`pointerdown/move/up` covers mouse, pen and touch in one API; use `setPointerCapture`), toolbar, undo/redo, clear, PNG export. Register it in the `tools` array and add en/es/pt strings to `src/translations.ts`.
 - `src/lib/sketch/geometry.ts`: resample stroke to N equidistant points (as in $1), bounding box, path length, closedness.
 - `src/lib/sketch/shapes.ts`: heuristic shape classifier on the **resampled** stroke:

@@ -155,6 +155,9 @@ Drawing canvas that tidies hand-drawn diagram shapes (BACKLOG §0, phase A). Eve
 - **Elements (`src/lib/sketch/elements.ts`):** flat `SketchElement[]` (`line`, `arrow`, `rectangle`, `ellipse`, `diamond`, `triangle`, `freehand`), each with a style that includes a fixed rough.js `seed` so redraws don't wobble, and the original `raw` strokes so "Keep as drawn" can revert a snap. `hitTest` is used by the eraser.
 - **Rendering (`src/lib/sketch/render.ts`):** rough.js (`roughjs` npm package) for shapes, smoothed quadratic path for freehand. Two stacked canvases: base (all elements, redrawn on change) and overlay (live stroke, drawn incrementally).
 - **State:** `history = { past, present, future }` for undo/redo (buttons, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z while the tool has focus), plus tool, color, stroke width, roughness and the last recognition status. Export to PNG on a white background.
+- **Canvas size:** the canvas fills the visible area (480 px tall in the card, the whole window in full screen) but never shrinks below its content (`contentExtent` + margin); when the content is larger than the view, the drawing area scrolls. There is no infinite canvas / pan / zoom yet.
+- **Full screen:** uses the Fullscreen API on the tool's container, with a fixed-overlay fallback when the API is refused (e.g. in an iframe). Esc (or the button) returns to the card view.
+- **Chalkboard theme (`src/lib/sketch/palette.ts`):** only the drawing area switches to a black background. Elements store a palette key (`ink`, `indigo`, …) rather than a hex color, and each key has a light and a chalkboard value, so toggling the theme recolors existing drawings. PNG export uses the current theme's background.
 - **UI strings** go through `useTranslation` (`canvas*` and `shape_*` keys).
 
 ---

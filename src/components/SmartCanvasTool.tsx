@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
 import rough from "roughjs";
 import { useTranslation } from "../hooks/useTranslation";
 import type { Point } from "../lib/sketch/geometry";
 import { recognizeShape, tryAttachArrowHead, type ShapeName } from "../lib/sketch/shapes";
-import { hitTest, type ElementStyle, type SketchElement } from "../lib/sketch/elements";
+import { contentExtent, hitTest, type ElementStyle, type SketchElement } from "../lib/sketch/elements";
 import { drawElement, drawSmoothStroke } from "../lib/sketch/render";
+import { BACKGROUND, COLOR_KEYS, resolveColor, type CanvasTheme, type ColorKey } from "../lib/sketch/palette";
 
 type Tool = "smart" | "freehand" | "eraser";
 
@@ -21,11 +22,13 @@ interface Status {
     elementId: number;
 }
 
-const CANVAS_HEIGHT = 480;
+/** Height of the drawing area in the normal (card) view. */
+const VIEW_HEIGHT = 480;
+/** Room kept past the furthest element when the canvas grows to fit its content. */
+const CONTENT_MARGIN = 24;
 /** A separate stroke counts as the head of the previous line only if drawn within this window. */
 const ARROW_HEAD_WINDOW_MS = 4000;
 const ERASER_TOLERANCE = 8;
-const COLORS = ["#1e293b", "#4f46e5", "#059669", "#e11d48", "#d97706", "#0891b2"];
 
 let nextId = 1;
 const newId = () => nextId++;
@@ -34,13 +37,16 @@ const newSeed = () => Math.floor(Math.random() * 2 ** 31) + 1;
 export default function SmartCanvasTool() {
     const { t } = useTranslation();
     const containerRef = useRef<HTMLDivElement>(null);
+    const viewportRef = useRef<HTMLDivElement>(null);
     const baseRef = useRef<HTMLCanvasElement>(null);
     const overlayRef = useRef<HTMLCanvasElement>(null);
 
-    const [width, setWidth] = useState(0);
+    const [view, setView] = useState({ width: 0, height: 0 });
     const [history, setHistory] = useState<History>({ past: [], present: [], future: [] });
     const [tool, setTool] = useState<Tool>("smart");
-    const [color, setColor] = useState(COLORS[0]);
+    const [color, setColor] = useState<ColorKey>("ink");
+    const [theme, setTheme] = useState<CanvasTheme>("light");
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const [strokeWidth, setStrokeWidth] = useState(2);
     const [roughness, setRoughness] = useState(1);
     const [status, setStatus] = useState<Status | null>(null);
@@ -51,6 +57,12 @@ export default function SmartCanvasTool() {
     const lastLineRef = useRef<{ id: number; at: number } | null>(null);
 
     const elements = history.present;
+
+    // The canvas fills the visible area but never shrinks below its content, so drawings made
+    // in full screen stay reachable (by scrolling) after going back to the smaller card view.
+    const extent = useMemo(() => contentExtent(elements), [elements]);
+    const canvasWidth = Math.max(view.width, Math.ceil(extent.maxX + CONTENT_MARGIN));
+    const canvasHeight = Math.max(view.height, Math.ceil(extent.maxY + CONTENT_MARGIN));
 
     const commit = useCallback((next: SketchElement[]) => {
         setHistory((h) => ({ past: [...h.past, h.present], present: next, future: [] }));
@@ -76,37 +88,72 @@ export default function SmartCanvasTool() {
         lastLineRef.current = null;
     }, []);
 
-    // Track the container width so the canvas fills the card.
-    useEffect(() => {
-        const container = containerRef.current;
-        if (!container) return;
-        const observer = new ResizeObserver(([entry]) => setWidth(Math.floor(entry.contentRect.width)));
-        observer.observe(container);
+    // Track the visible drawing area (it changes with the card width and with full screen).
+    // Measured synchronously on mount and on full-screen toggles so there's no frame at the old
+    // size; the observer picks up later window/card resizes.
+    useLayoutEffect(() => {
+        const viewport = viewportRef.current;
+        if (!viewport) return;
+        const measure = () => setView({ width: viewport.clientWidth, height: viewport.clientHeight });
+        measure();
+        const observer = new ResizeObserver(measure);
+        observer.observe(viewport);
         return () => observer.disconnect();
-    }, []);
+    }, [isFullscreen]);
 
     // Size both canvases for the device pixel ratio so strokes stay crisp.
     useEffect(() => {
         const dpr = window.devicePixelRatio || 1;
         for (const canvas of [baseRef.current, overlayRef.current]) {
-            if (!canvas || width === 0) continue;
-            canvas.width = width * dpr;
-            canvas.height = CANVAS_HEIGHT * dpr;
+            if (!canvas || canvasWidth === 0) continue;
+            canvas.width = canvasWidth * dpr;
+            canvas.height = canvasHeight * dpr;
             canvas.getContext("2d")!.setTransform(dpr, 0, 0, dpr, 0, 0);
         }
-    }, [width]);
+    }, [canvasWidth, canvasHeight]);
 
-    // Redraw every stored element whenever they change.
+    // Redraw every stored element whenever they (or the theme / size) change.
     useEffect(() => {
         const canvas = baseRef.current;
-        if (!canvas || width === 0) return;
+        if (!canvas || canvasWidth === 0) return;
         const ctx = canvas.getContext("2d")!;
-        ctx.clearRect(0, 0, width, CANVAS_HEIGHT);
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
         const rc = rough.canvas(canvas);
         for (const el of elements) {
-            if (!pendingErase.has(el.id)) drawElement(rc, ctx, el);
+            if (!pendingErase.has(el.id)) drawElement(rc, ctx, el, theme);
         }
-    }, [elements, pendingErase, width]);
+    }, [elements, pendingErase, theme, canvasWidth, canvasHeight]);
+
+    // Leaving browser full screen (Esc, F11, …) returns to the card view.
+    useEffect(() => {
+        const onChange = () => {
+            if (document.fullscreenElement !== containerRef.current) setIsFullscreen(false);
+        };
+        document.addEventListener("fullscreenchange", onChange);
+        return () => document.removeEventListener("fullscreenchange", onChange);
+    }, []);
+
+    // When the Fullscreen API isn't available we fall back to a fixed overlay; Esc closes it too.
+    useEffect(() => {
+        if (!isFullscreen) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === "Escape") setIsFullscreen(false);
+        };
+        document.addEventListener("keydown", onKey);
+        return () => document.removeEventListener("keydown", onKey);
+    }, [isFullscreen]);
+
+    const enterFullscreen = () => {
+        setIsFullscreen(true);
+        containerRef.current?.requestFullscreen?.().catch(() => {
+            // Not allowed here (e.g. inside an iframe): the CSS overlay still covers the window.
+        });
+    };
+
+    const exitFullscreen = () => {
+        setIsFullscreen(false);
+        if (document.fullscreenElement) void document.exitFullscreen();
+    };
 
     const toPoint = (e: ReactPointerEvent | PointerEvent): Point => {
         const rect = overlayRef.current!.getBoundingClientRect();
@@ -131,7 +178,7 @@ export default function SmartCanvasTool() {
         }
 
         strokeRef.current = [p];
-        drawSmoothStroke(overlayRef.current!.getContext("2d")!, [p], color, strokeWidth);
+        drawSmoothStroke(overlayRef.current!.getContext("2d")!, [p], resolveColor(color, theme), strokeWidth);
     };
 
     const handlePointerMove = (e: ReactPointerEvent<HTMLCanvasElement>) => {
@@ -145,12 +192,13 @@ export default function SmartCanvasTool() {
         // Pens report more points than we get events for; use them all for a smoother stroke.
         const events = e.nativeEvent.getCoalescedEvents?.() ?? [e.nativeEvent];
         const ctx = overlayRef.current!.getContext("2d")!;
+        const inkColor = resolveColor(color, theme);
         for (const ev of events.length > 0 ? events : [e.nativeEvent]) {
             const p = toPoint(ev);
             const prev = stroke[stroke.length - 1];
             if (prev.x === p.x && prev.y === p.y) continue;
             stroke.push(p);
-            drawSmoothStroke(ctx, [prev, p], color, strokeWidth);
+            drawSmoothStroke(ctx, [prev, p], inkColor, strokeWidth);
         }
     };
 
@@ -167,7 +215,7 @@ export default function SmartCanvasTool() {
 
         const stroke = strokeRef.current;
         strokeRef.current = null;
-        overlayRef.current!.getContext("2d")!.clearRect(0, 0, width, CANVAS_HEIGHT);
+        overlayRef.current!.getContext("2d")!.clearRect(0, 0, canvasWidth, canvasHeight);
         if (!stroke) return;
 
         const style: ElementStyle = { color, strokeWidth, roughness, seed: newSeed() };
@@ -240,7 +288,7 @@ export default function SmartCanvasTool() {
         out.width = base.width;
         out.height = base.height;
         const ctx = out.getContext("2d")!;
-        ctx.fillStyle = "#ffffff";
+        ctx.fillStyle = BACKGROUND[theme];
         ctx.fillRect(0, 0, out.width, out.height);
         ctx.drawImage(base, 0, 0);
         const link = document.createElement("a");
@@ -279,7 +327,12 @@ export default function SmartCanvasTool() {
     const knownShape = status?.name ? status : null;
 
     return (
-        <div ref={containerRef} tabIndex={0} onKeyDown={handleKeyDown} className="outline-none">
+        <div
+            ref={containerRef}
+            tabIndex={0}
+            onKeyDown={handleKeyDown}
+            className={`outline-none ${isFullscreen ? "fixed inset-0 z-50 flex flex-col bg-gray-100 p-4" : ""}`}
+        >
             <div className="flex flex-wrap items-center gap-3 mb-3">
                 <div className="flex gap-1 p-1 rounded-lg bg-gray-100 border border-gray-200">
                     {toolButton("smart", t("canvasSmart"))}
@@ -287,14 +340,18 @@ export default function SmartCanvasTool() {
                     {toolButton("eraser", t("canvasEraser"))}
                 </div>
 
-                <div className="flex gap-1.5">
-                    {COLORS.map((c) => (
+                <div className={`flex gap-1.5 p-1 rounded-full ${theme === "chalkboard" ? "bg-neutral-800" : ""}`}>
+                    {COLOR_KEYS.map((key) => (
                         <button
-                            key={c}
-                            onClick={() => setColor(c)}
-                            aria-label={c}
-                            className={`w-6 h-6 rounded-full border-2 ${color === c ? "border-gray-900 scale-110" : "border-white"}`}
-                            style={{ backgroundColor: c }}
+                            key={key}
+                            onClick={() => setColor(key)}
+                            aria-label={key}
+                            className={`w-6 h-6 rounded-full border-2 ${
+                                color === key
+                                    ? `${theme === "chalkboard" ? "border-white" : "border-gray-900"} scale-110`
+                                    : "border-transparent"
+                            }`}
+                            style={{ backgroundColor: resolveColor(key, theme) }}
                         />
                     ))}
                 </div>
@@ -325,7 +382,18 @@ export default function SmartCanvasTool() {
                     />
                 </label>
 
-                <div className="flex gap-2 ml-auto">
+                <div className="flex flex-wrap gap-2 ml-auto">
+                    <button
+                        onClick={() => setTheme(theme === "light" ? "chalkboard" : "light")}
+                        aria-pressed={theme === "chalkboard"}
+                        className={
+                            theme === "chalkboard"
+                                ? "px-3 py-1.5 rounded-md text-sm font-medium text-white bg-neutral-900 border border-neutral-900 hover:bg-neutral-800"
+                                : actionClass
+                        }
+                    >
+                        {t("canvasChalkboard")}
+                    </button>
                     <button onClick={undo} disabled={history.past.length === 0} className={actionClass}>
                         {t("canvasUndo")}
                     </button>
@@ -338,20 +406,31 @@ export default function SmartCanvasTool() {
                     <button onClick={exportPng} disabled={elements.length === 0} className={actionClass}>
                         {t("canvasExportPng")}
                     </button>
+                    <button onClick={isFullscreen ? exitFullscreen : enterFullscreen} className={actionClass}>
+                        {isFullscreen ? t("canvasExitFullscreen") : t("canvasFullscreen")}
+                    </button>
                 </div>
             </div>
 
-            <div className="relative rounded-lg border border-gray-300 bg-white overflow-hidden" style={{ height: CANVAS_HEIGHT }}>
-                <canvas ref={baseRef} className="absolute inset-0" style={{ width, height: CANVAS_HEIGHT }} />
-                <canvas
-                    ref={overlayRef}
-                    className={`absolute inset-0 touch-none ${tool === "eraser" ? "cursor-cell" : "cursor-crosshair"}`}
-                    style={{ width, height: CANVAS_HEIGHT }}
-                    onPointerDown={handlePointerDown}
-                    onPointerMove={handlePointerMove}
-                    onPointerUp={handlePointerUp}
-                    onPointerCancel={handlePointerUp}
-                />
+            <div
+                ref={viewportRef}
+                className={`relative rounded-lg border overflow-auto ${
+                    theme === "chalkboard" ? "border-neutral-700" : "border-gray-300"
+                } ${isFullscreen ? "flex-1 min-h-0" : ""}`}
+                style={{ height: isFullscreen ? undefined : VIEW_HEIGHT, backgroundColor: BACKGROUND[theme] }}
+            >
+                <div className="relative" style={{ width: canvasWidth, height: canvasHeight }}>
+                    <canvas ref={baseRef} className="absolute inset-0" style={{ width: canvasWidth, height: canvasHeight }} />
+                    <canvas
+                        ref={overlayRef}
+                        className={`absolute inset-0 touch-none ${tool === "eraser" ? "cursor-cell" : "cursor-crosshair"}`}
+                        style={{ width: canvasWidth, height: canvasHeight }}
+                        onPointerDown={handlePointerDown}
+                        onPointerMove={handlePointerMove}
+                        onPointerUp={handlePointerUp}
+                        onPointerCancel={handlePointerUp}
+                    />
+                </div>
             </div>
 
             <div className="flex items-center gap-3 mt-2 min-h-8 text-sm text-gray-600">

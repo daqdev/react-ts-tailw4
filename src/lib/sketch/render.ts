@@ -2,11 +2,13 @@ import type { RoughCanvas } from "roughjs/bin/canvas";
 import type { Options } from "roughjs/bin/core";
 import type { Point } from "./geometry";
 import { outline, type SketchElement } from "./elements";
+import { resolveColor, type CanvasTheme } from "./palette";
 
 const ARROW_HEAD_ANGLE = 0.45;
 
-export function drawElement(rc: RoughCanvas, ctx: CanvasRenderingContext2D, el: SketchElement) {
-    const { color, strokeWidth, roughness, seed } = el.style;
+export function drawElement(rc: RoughCanvas, ctx: CanvasRenderingContext2D, el: SketchElement, theme: CanvasTheme) {
+    const { strokeWidth, roughness, seed } = el.style;
+    const color = resolveColor(el.style.color, theme);
     const options: Options = { stroke: color, strokeWidth, roughness, seed };
 
     switch (el.kind) {

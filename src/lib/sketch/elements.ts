@@ -1,8 +1,9 @@
-import { distance, distanceToSegment, type Point } from "./geometry";
+import { bounds, distance, distanceToSegment, type Point } from "./geometry";
+import type { ColorKey } from "./palette";
 import type { Shape } from "./shapes";
 
 export interface ElementStyle {
-    color: string;
+    color: ColorKey;
     strokeWidth: number;
     roughness: number;
     /** Fixed seed so rough.js draws the same wobble on every redraw. */
@@ -66,6 +67,33 @@ export function distanceToElement(el: SketchElement, p: Point): number {
             return best;
         }
     }
+}
+
+/** Bottom-right corner of the area covered by the elements (including stroke width). */
+export function contentExtent(elements: SketchElement[]): { maxX: number; maxY: number } {
+    let maxX = 0;
+    let maxY = 0;
+    for (const el of elements) {
+        let points: Point[];
+        switch (el.kind) {
+            case "line":
+            case "arrow":
+                points = [{ x: el.x1, y: el.y1 }, { x: el.x2, y: el.y2 }];
+                break;
+            case "ellipse":
+                points = [{ x: el.cx + el.rx, y: el.cy + el.ry }];
+                break;
+            case "freehand":
+                points = el.points;
+                break;
+            default:
+                points = outline(el)!;
+        }
+        const b = bounds(points);
+        maxX = Math.max(maxX, b.maxX + el.style.strokeWidth);
+        maxY = Math.max(maxY, b.maxY + el.style.strokeWidth);
+    }
+    return { maxX, maxY };
 }
 
 /** Topmost element whose outline passes within `tolerance` of `p`. */

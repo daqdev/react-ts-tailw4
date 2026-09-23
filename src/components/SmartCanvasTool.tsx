@@ -88,6 +88,7 @@ export default function SmartCanvasTool() {
     const lastGlyphRef = useRef<{ elementId: number; box: Bounds; at: number } | null>(null);
     const recognizerRef = useRef<CharRecognizer | null>(null);
     const finalizeRef = useRef<() => void>(() => {});
+    const shiftTapRef = useRef(false);
 
     const elements = history.present;
 
@@ -372,6 +373,8 @@ export default function SmartCanvasTool() {
         if (e.pointerType === "mouse" && e.button !== 0) return;
         e.currentTarget.setPointerCapture(e.pointerId);
         containerRef.current?.focus();
+        // Shift held while drawing isn't a mode-switch tap.
+        shiftTapRef.current = false;
         const p = toPoint(e);
 
         if (tool === "eraser") {
@@ -525,7 +528,18 @@ export default function SmartCanvasTool() {
         });
     };
 
+    const isTyping = (e: ReactKeyboardEvent) =>
+        e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+
     const handleKeyDown = (e: ReactKeyboardEvent) => {
+        // Left Shift on its own toggles Shapes ↔ Text; any other key while it's held
+        // (Ctrl+Shift+Z, …) means it wasn't a tap.
+        if (e.code === "ShiftLeft") {
+            if (!e.repeat) shiftTapRef.current = !isTyping(e);
+        } else {
+            shiftTapRef.current = false;
+        }
+
         if (!(e.ctrlKey || e.metaKey)) return;
         const key = e.key.toLowerCase();
         if (key === "z" && !e.shiftKey) {
@@ -537,11 +551,18 @@ export default function SmartCanvasTool() {
         }
     };
 
+    const handleKeyUp = (e: ReactKeyboardEvent) => {
+        if (e.code !== "ShiftLeft" || !shiftTapRef.current) return;
+        shiftTapRef.current = false;
+        selectTool(tool === "shapes" ? "text" : "shapes");
+    };
+
     const toolButton = (value: Tool, label: string) => (
         <button
             key={value}
             onClick={() => selectTool(value)}
             aria-pressed={tool === value}
+            title={value === "shapes" || value === "text" ? t("canvasShiftHint") : undefined}
             className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 tool === value ? "bg-indigo-600 text-white shadow" : "text-gray-700 hover:bg-gray-200"
             }`}
@@ -659,6 +680,7 @@ export default function SmartCanvasTool() {
             ref={containerRef}
             tabIndex={0}
             onKeyDown={handleKeyDown}
+            onKeyUp={handleKeyUp}
             className={`outline-none ${isFullscreen ? "fixed inset-0 z-50 flex flex-col bg-gray-100 p-4" : ""}`}
         >
             <div className="flex flex-wrap items-center gap-3 mb-3">

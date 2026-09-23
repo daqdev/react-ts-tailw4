@@ -152,6 +152,7 @@ Authors a template that JsonTool can later consume.
 Drawing canvas that tidies hand-drawn diagram shapes (BACKLOG §0, phase A). Everything runs locally; no ML model, no network.
 
 - **Modes:** *Shapes* (recognize and snap shapes), *Text* (handwriting → text, see below), *Freehand* (keep strokes as drawn), *Eraser* (drag over elements to delete them; one undo step per drag).
+- **Shortcut:** tapping left Shift (alone, while the tool has focus) toggles Shapes ↔ Text; from Freehand/Eraser it goes to Shapes. It fires on key-up and only if no other key was pressed and nothing was drawn meanwhile, so Ctrl+Shift+Z and Shift+drawing are unaffected; ignored while typing in an input. Right Shift does nothing.
 - **Text mode (BACKLOG §0 phase B):**
   - Recognizer: `$Q` point-cloud recognizer (`src/lib/sketch/pointCloud.ts`), multistroke and stroke-order/direction invariant, ~2 ms per character. Built-in templates for `0–9` and `A–Z` are generated from stroke descriptions in `src/lib/sketch/glyphs.ts`. Matches with distance > 10 are rejected (kept as ink) instead of guessed.
   - Everything written before a 700 ms pause is one batch. `segmentCharacters` (`src/lib/sketch/characters.ts`) clusters strokes whose horizontal extents overlap, then picks the split into characters with the lowest total recognition distance, so words can be written without pausing between letters and multi-cluster letters (`H`, `M`) still work.

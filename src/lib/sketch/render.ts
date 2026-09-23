@@ -1,10 +1,12 @@
 import type { RoughCanvas } from "roughjs/bin/canvas";
 import type { Options } from "roughjs/bin/core";
 import type { Point } from "./geometry";
-import { outline, type SketchElement } from "./elements";
+import { outline, textOf, type SketchElement } from "./elements";
 import { resolveColor, type CanvasTheme } from "./palette";
 
 const ARROW_HEAD_ANGLE = 0.45;
+/** Handwriting-style system fonts, to match the rough.js look; no web font download. */
+const TEXT_FONT = '"Segoe Print", "Bradley Hand", "Comic Sans MS", "Chalkboard SE", cursive';
 
 export function drawElement(rc: RoughCanvas, ctx: CanvasRenderingContext2D, el: SketchElement, theme: CanvasTheme) {
     const { strokeWidth, roughness, seed } = el.style;
@@ -39,6 +41,14 @@ export function drawElement(rc: RoughCanvas, ctx: CanvasRenderingContext2D, el: 
             break;
         case "freehand":
             drawSmoothStroke(ctx, el.points, color, strokeWidth);
+            break;
+        case "text":
+            ctx.save();
+            ctx.fillStyle = color;
+            ctx.font = `${el.fontSize}px ${TEXT_FONT}`;
+            ctx.textBaseline = "alphabetic";
+            ctx.fillText(textOf(el), el.x, el.y);
+            ctx.restore();
             break;
     }
 }

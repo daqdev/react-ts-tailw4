@@ -46,7 +46,7 @@ Problems found in the prototype (do **not** carry these over):
   - otherwise keep as smoothed freehand.
 - Return a real score (e.g. fit error normalized to size) and only snap when above a threshold; otherwise keep the freehand stroke. Offer a one-click "undo snap" (keep the raw stroke in the element so it can be reverted).
 
-**Phase B — Text mode with a mode selector (letters & digits).**
+**Phase B — Text mode with a mode selector (letters & digits).** ✅ Done — see SPEC §5.5. Differences from the plan below: instead of closing a character on each pause, everything written before a pause is split into characters by trying the possible splits (so words can be written fluently); built-in templates are generated from stroke descriptions (one or two per character) rather than recorded samples.
 - Add a **mode selector**: `Shapes | Text`. Explicit mode is the most accurate and cheapest option, so it comes first.
 - Recognizer: **$Q (or $P) point-cloud recognizer** — multistroke, stroke-order and direction invariant, ~200 lines of TS, no model, sub-millisecond per match with a few hundred templates. Put it in `src/lib/sketch/pointCloud.ts`.
 - **Stroke grouping:** strokes belong to the same character while the pen goes down again within ~400–600 ms *and* near the current group's bbox; a pause or a far-away stroke closes the group and triggers recognition. Consecutive characters on the same baseline merge into one text element (word).

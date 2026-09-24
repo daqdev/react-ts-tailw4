@@ -78,6 +78,49 @@ Problems found in the prototype (do **not** carry these over):
 
 ---
 
+## 0b. Deploy Plan Generator tool — NEXT
+
+**Goal:** port the standalone prototype `generador-plan-despliegue.html` (kept locally, **not committed**: it contains internal system names and this repo is public) into a new tool. It builds a deployment-window plan (sections → steps with duration and owner), computes start/end times from a start hour, and copies an Outlook-ready HTML table to the clipboard.
+
+### 0b.1 What the prototype does
+- Inputs: title, start time (`HH:MM`), sections (fixed: INICIO, GO, ROLLBACK) each with steps `{ description, duration (min), owner }`; owner from a fixed list.
+- Scheduling: steps run back to back across all sections; each step's start/end = running cursor; wraps past midnight (`fmtHora` mod 1440).
+- Output: an email block (title, "Ventana: start a end | Duración total", table) built as an HTML string with inline styles tuned for Outlook Web (Calibri 10pt, header `#0F243E`, section rows `#8497B0`, pt widths, color on the inner `<span>` because Outlook overrides the `<td>` color, borders arranged to avoid doubles).
+- Copy: `navigator.clipboard.write` with `text/html` + `text/plain` (tab-separated) and a `contenteditable` + `execCommand("copy")` fallback. Raw HTML textarea for pasting in code mode.
+- Totals per section and overall.
+
+### 0b.2 Issues found (fix while porting)
+- **Start time not validated or normalized:** `"9:5"` is shown as-is in the header, garbage becomes `00:00`, and the raw value is inserted into the HTML **unescaped**.
+- **Negative durations** can be typed (only the spinner respects `min=0`) and move the schedule backwards.
+- **All sections are chained in time.** ROLLBACK (and GO, if it's a decision point) probably shouldn't continue the clock after the previous section — needs a product decision (see questions).
+- "Estado" is always "Pendiente"; owners list and section names are hard-coded; steps can't be reordered; sections can't be added/renamed.
+- No persistence: a reload loses the plan.
+- `buildTable()` runs twice per render; empty sections still render a separator row (maybe intended).
+- Default steps reference internal systems — replace with neutral examples before committing.
+
+### 0b.3 Integration plan
+- `src/lib/deployPlan/` (pure, testable):
+  - `time.ts` — `parseTime` (strict `HH:MM`, returns null when invalid), `formatTime` (mod 24h).
+  - `schedule.ts` — `schedulePlan(plan)` → rows with id, start, end, per-section and total minutes (single source for table, text and totals).
+  - `emailHtml.ts` — builds the Outlook HTML string. Keep the prototype's inline-style approach and constants **as-is**; escape every user value (including the start time).
+  - `plainText.ts` — tab-separated fallback for `text/plain`.
+- `src/components/DeployPlanTool.tsx`: state `{ title, startTime, sections[{ id, name, steps[{ id, description, duration, owner }] }] }` with stable ids (not array indexes) via `useReducer`; editor on the left, preview on the right, stacked on narrow widths.
+- **Preview in an `<iframe srcDoc>`**, not `dangerouslySetInnerHTML`: Tailwind's preflight resets `table`/`p` styles, so an inline preview wouldn't look like the email. The iframe shows exactly what gets pasted. The ~623pt table needs horizontal scroll inside the card.
+- Clipboard behind a small adapter (`copyHtml(html, text)`) with the same fallback — matches the direction in task 1.
+- UI strings through `useTranslation` (en/es/pt). The **email content** stays in Spanish unless decided otherwise.
+- Register in `HomePage.tsx`, update `SPEC.md`.
+
+### 0b.4 Open questions
+1. Should GO / ROLLBACK times continue after the previous section, or restart from their own start (e.g. rollback starts where it would be triggered)?
+2. Should sections be editable (add/rename/remove) and owners free text or a configurable list?
+3. Should "Estado" be editable (Pendiente / En curso / OK / Error), making this also a tracker during the window?
+4. Persist the last plan in `localStorage`? Import/export as JSON to reuse templates?
+5. Email headers/content: always Spanish, or follow the UI language?
+
+**Done when:** the tool is in the selector; editing a step updates times and preview instantly; "Copy for email" pastes into Outlook Web with the same look as the prototype; invalid start times and negative durations are rejected; `pnpm build` / lint green; SPEC updated.
+
+---
+
 ## 1. Testability study (do this first)
 
 **Goal:** decide whether — and where — to refactor before we start writing tests. The output of this task is a short written recommendation, not code.

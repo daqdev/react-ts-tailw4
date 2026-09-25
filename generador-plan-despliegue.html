@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generador de Plan de Despliegue</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    margin: 0; background: #eef2f6; color: #1d2b3a;
+    display: grid; grid-template-columns: 470px 1fr; min-height: 100vh;
+  }
+  .panel { background:#fff; border-right:1px solid #b7c2d0; padding:20px; overflow-y:auto; max-height:100vh; }
+  .preview { padding:24px; overflow-y:auto; max-height:100vh; }
+  h1 { font-size:18px; margin:0 0 4px; }
+  .sub { font-size:12px; color:#64748b; margin:0 0 16px; }
+  label { display:block; font-size:12px; font-weight:600; margin:10px 0 4px; }
+  .panel input, .panel select { width:100%; padding:7px 9px; border:1px solid #b7c2d0; border-radius:6px; font-size:13px; font-family:inherit; }
+  .seccion-block { border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; margin-bottom:12px; background:#f8fafc; }
+  .seccion-title { font-weight:700; color:#0F243E; font-size:13px; text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px; }
+  .task-row { display:grid; grid-template-columns:22px 1fr 58px 94px 26px; gap:6px; align-items:center; padding:5px 0; border-bottom:1px dashed #e2e8f0; }
+  .task-row .idx { font-size:11px; color:#94a3b8; text-align:center; }
+  .task-row input, .task-row select { padding:5px 6px !important; font-size:12px !important; }
+  button { font-family:inherit; font-size:12px; font-weight:600; border:0; border-radius:6px; padding:8px 12px; cursor:pointer; }
+  .btn-add { background:#e2ebf5; color:#0F243E; margin-top:8px; width:100%; }
+  .btn-del { background:transparent; color:#d1495b; font-size:16px; padding:2px; }
+  .btn-copy { background:#0f9d58; color:#fff; }
+  .btn-alt { background:#e2e8f0; color:#334155; }
+  .actions { display:flex; gap:8px; margin:16px 0; align-items:center; flex-wrap:wrap; }
+  .hint { font-size:11px; color:#94a3b8; margin-top:4px; }
+  .copied { color:#0f9d58; font-size:12px; font-weight:600; }
+  .totales { font-size:12px; color:#475569; margin-top:12px; }
+  #raw { width:100%; height:140px; font-family:Consolas,monospace; font-size:10px; margin-top:8px; display:none; }
+</style>
+</head>
+<body>
+  <!-- ====== CARGA ====== -->
+  <div class="panel">
+    <h1>Generador de Plan de Despliegue</h1>
+    <p class="sub">Formato replicado del mail real (Calibri 10pt, header #0F243E, separadores #8497B0).</p>
+
+    <label>Título</label>
+    <input id="titulo" value="Plan de Despliegue" oninput="render()" />
+
+    <label>Hora de inicio (HH:MM)</label>
+    <input id="horaInicio" value="22:00" oninput="render()" />
+    <div class="hint">Cruce de medianoche resuelto automáticamente.</div>
+
+    <div id="secciones" style="margin-top:16px;"></div>
+
+    <div class="actions">
+      <button class="btn-copy" onclick="copiar()">📋 Copiar para email</button>
+      <button class="btn-alt" onclick="toggleRaw()">&lt;/&gt; HTML</button>
+      <span id="copied" class="copied"></span>
+    </div>
+    <textarea id="raw" readonly onclick="this.select()"></textarea>
+    <div class="hint">Pegá en Outlook Web con Ctrl+V. Si algo se pierde, copiá el HTML crudo y usá el modo código del editor.</div>
+    <div id="totales" class="totales"></div>
+  </div>
+
+  <!-- ====== PREVIEW ====== -->
+  <div class="preview">
+    <div id="output"></div>
+  </div>
+
+<script>
+/* ============ Paleta y métricas tomadas del mail real ============ */
+const C_HDR   = "#0F243E";   // header principal
+const C_SEC   = "#8497B0";   // fila separadora de sección
+const C_BORDE = "#000000";   // bordes (windowtext en el original)
+const FUENTE  = "Calibri,sans-serif";
+const PT      = "10pt";      // tamaño de texto real dentro del span
+const P_WRAP  = "font-size:12pt;font-family:'Times New Roman',serif;margin:0;";
+
+/* Anchos en pt (total ~623pt como el original) */
+const W = { id:24, tarea:287, estado:47, ini:63.3, fin:60.7, dur:62, resp:79 };
+const H_HDR = "15pt", H_SEC = "15pt", H_DATO = "28.2pt";
+
+const RESPONSABLES = ["Command", "IT", "USUARIO", "DBA", "Redes", ""];
+
+/* ============ Estado ============ */
+let secciones = [
+  { nombre: "INICIO", tareas: [
+    { tarea: "Stop Jboss CT + GID + FM", dur: 5, resp: "Command" },
+    { tarea: "Script BD", dur: 10, resp: "IT" },
+    { tarea: "Despliegue Wars Nuevos CT-FM-GID + start Jboss CT - FM - GID", dur: 20, resp: "Command" },
+    { tarea: "Despliegue de Vue - Ocp4", dur: 15, resp: "IT" },
+    { tarea: "Verificación interna Sistemas", dur: 60, resp: "IT" },
+    { tarea: "Pruebas usuario", dur: 60, resp: "USUARIO" },
+  ]},
+  { nombre: "GO", tareas: [
+    { tarea: "Stop Jboss FM - GID - CT", dur: 10, resp: "Command" },
+    { tarea: "Despliegue War anterior de CT", dur: 10, resp: "Command" },
+    { tarea: "Script BD", dur: 5, resp: "IT" },
+    { tarea: "Start Jboss CT", dur: 10, resp: "Command" },
+    { tarea: "Stop Vue - Ocp4", dur: 10, resp: "IT" },
+    { tarea: "Verificación interna Sistemas", dur: 60, resp: "IT" },
+    { tarea: "Pruebas usuario", dur: 60, resp: "USUARIO" },
+  ]},
+  { nombre: "ROLLBACK", tareas: [] },
+];
+
+/* ============ Utilidades ============ */
+function parseHora(s){ const p=String(s).split(":"); return (Number(p[0])||0)*60+(Number(p[1])||0); }
+function fmtHora(min){ const m=((min%1440)+1440)%1440; return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+/* Bordes: top solo en la primera fila, left solo en la primera columna.
+   Evita bordes dobles, igual que el export de Excel. */
+function borde(primeraCol, primeraFila){
+  const top  = primeraFila ? "solid" : "none";
+  const left = primeraCol  ? "solid" : "none";
+  return `border-width:1pt;border-style:${top} solid solid ${left};border-color:${C_BORDE};`;
+}
+
+/* Celda. El color de texto va en el <span> INTERNO, no en el <td>:
+   Outlook Web inyecta su propio <p> y pisa el color del <td>. */
+function celda(o){
+  const {
+    texto = "&nbsp;", w, h, bg = null, negrita = false,
+    colorTexto = "black", align = "center",
+    primeraCol = false, primeraFila = false,
+    rowspan = 0, colspan = 0
+  } = o;
+
+  const attrs = (rowspan ? ` rowspan="${rowspan}"` : "") + (colspan ? ` colspan="${colspan}"` : "");
+  const tdStyle =
+      (bg ? `background-color:${bg};` : "")
+    + `width:${w}pt;height:${h};padding:0 3.5pt;`
+    + borde(primeraCol, primeraFila);
+
+  const pAlign = (align === "center") ? ` align="center"` : "";
+  const pStyle = P_WRAP + (align === "center" ? "text-align:center;" : "");
+  const span   = `<span style="color:${colorTexto};font-size:${PT};font-family:${FUENTE};">${texto}</span>`;
+  const inner  = negrita ? `<b>${span}</b>` : span;
+
+  return `<td${attrs} style="${tdStyle}"><p${pAlign} style="${pStyle}">${inner}</p></td>`;
+}
+
+/* ============ Panel de carga ============ */
+function renderPanel(){
+  const cont = document.getElementById("secciones"); cont.innerHTML = "";
+  secciones.forEach((sec,si)=>{
+    const block = document.createElement("div"); block.className="seccion-block";
+    block.innerHTML = `<div class="seccion-title">${esc(sec.nombre)}</div><div id="t-${si}"></div>
+      <button class="btn-add" onclick="addTarea(${si})">+ Agregar paso a ${esc(sec.nombre)}</button>`;
+    cont.appendChild(block);
+    const tc = block.querySelector(`#t-${si}`);
+    sec.tareas.forEach((t,ti)=>{
+      const r=document.createElement("div"); r.className="task-row";
+      r.innerHTML = `
+        <span class="idx">${ti+1}</span>
+        <input value="${esc(t.tarea)}" placeholder="Descripción del paso" oninput="upd(${si},${ti},'tarea',this.value)">
+        <input type="number" min="0" value="${t.dur}" title="Duración en minutos" oninput="upd(${si},${ti},'dur',this.value)">
+        <select onchange="upd(${si},${ti},'resp',this.value)">
+          ${RESPONSABLES.map(x=>`<option value="${esc(x)}" ${x===t.resp?'selected':''}>${esc(x)||'—'}</option>`).join("")}
+        </select>
+        <button class="btn-del" onclick="del(${si},${ti})" title="Eliminar">&times;</button>`;
+      tc.appendChild(r);
+    });
+  });
+}
+function upd(si,ti,campo,val){ secciones[si].tareas[ti][campo] = campo==="dur"?Number(val):val; render(); }
+function del(si,ti){ secciones[si].tareas.splice(ti,1); renderPanel(); render(); }
+function addTarea(si){ secciones[si].tareas.push({tarea:"",dur:5,resp:""}); renderPanel(); render(); }
+
+/* ============ Tabla ============ */
+function buildTable(){
+  const totalW = W.id + W.tarea + W.estado + W.ini + W.fin + W.dur + W.resp;
+  let cursor = parseHora(document.getElementById("horaInicio").value);
+  let id = 0, filas = "", totalMin = 0;
+  const resumen = [];
+
+  /* ---- Header fila 1 ---- */
+  filas += `<tr style="height:${H_HDR};">`
+    + celda({ texto:"ID", w:W.id, h:H_HDR, bg:C_HDR, negrita:true, colorTexto:"white", rowspan:2, primeraCol:true, primeraFila:true })
+    + celda({ texto:"TAREAS A EJECUTAR EN VENTANA DE IMPLEMENTACIÓN", w:W.tarea, h:H_HDR, bg:C_HDR, negrita:true, colorTexto:"white", rowspan:2, primeraFila:true })
+    + celda({ texto:"ESTADO", w:W.estado, h:H_HDR, bg:C_HDR, negrita:true, colorTexto:"white", rowspan:2, primeraFila:true })
+    + celda({ texto:"HORA", w:W.ini+W.fin, h:H_HDR, bg:C_HDR, negrita:true, colorTexto:"white", colspan:2, primeraFila:true })
+    + celda({ texto:"Duración (mins)", w:W.dur, h:H_HDR, bg:C_HDR, negrita:true, colorTexto:"white", rowspan:2, primeraFila:true })
+    + celda({ texto:"RESPONSABLE DE EJECUCIÓN", w:W.resp, h:H_HDR, bg:C_HDR, negrita:true, colorTexto:"white", rowspan:2, primeraFila:true })
+    + `</tr>`;
+
+  /* ---- Header fila 2 ---- */
+  filas += `<tr style="height:${H_HDR};">`
+    + celda({ texto:"INICIO", w:W.ini, h:H_HDR, bg:C_HDR, negrita:true, colorTexto:"white" })
+    + celda({ texto:"FIN",    w:W.fin, h:H_HDR, bg:C_HDR, negrita:true, colorTexto:"white" })
+    + `</tr>`;
+
+  /* ---- Secciones ---- */
+  secciones.forEach(sec=>{
+    /* Fila separadora: 7 celdas con fondo, el label va en la 2da.
+       Replica el mail real (no usa colspan). */
+    filas += `<tr style="height:${H_SEC};">`
+      + celda({ w:W.id,     h:H_SEC, bg:C_SEC, primeraCol:true })
+      + celda({ texto:esc(sec.nombre), w:W.tarea, h:H_SEC, bg:C_SEC, negrita:true, colorTexto:"white", align:"left" })
+      + celda({ w:W.estado, h:H_SEC, bg:C_SEC })
+      + celda({ w:W.ini,    h:H_SEC, bg:C_SEC })
+      + celda({ w:W.fin,    h:H_SEC, bg:C_SEC })
+      + celda({ w:W.dur,    h:H_SEC, bg:C_SEC })
+      + celda({ w:W.resp,   h:H_SEC, bg:C_SEC })
+      + `</tr>`;
+
+    let secMin = 0;
+    sec.tareas.forEach(t=>{
+      id++;
+      const d = Number(t.dur||0);
+      const ini = cursor, fin = cursor + d;
+      cursor = fin; secMin += d; totalMin += d;
+      filas += `<tr style="height:${H_DATO};">`
+        + celda({ texto:String(id),        w:W.id,     h:H_DATO, primeraCol:true })
+        + celda({ texto:esc(t.tarea),      w:W.tarea,  h:H_DATO, align:"left" })
+        + celda({ texto:"Pendiente",       w:W.estado, h:H_DATO, align:"left" })
+        + celda({ texto:fmtHora(ini),      w:W.ini,    h:H_DATO })
+        + celda({ texto:fmtHora(fin),      w:W.fin,    h:H_DATO })
+        + celda({ texto:String(d),         w:W.dur,    h:H_DATO })
+        + celda({ texto:esc(t.resp)||"&nbsp;", w:W.resp, h:H_DATO })
+        + `</tr>`;
+    });
+    if (sec.tareas.length) resumen.push(`${sec.nombre}: ${secMin} min`);
+  });
+
+  const tabla =
+    `<table border="0" cellspacing="0" cellpadding="0" `
+  + `style="width:${totalW}pt;border-spacing:0;border-collapse:collapse;">`
+  + `<tbody>${filas}</tbody></table>`;
+
+  return { tabla, totalMin, resumen };
+}
+
+function buildBloqueEmail(){
+  const titulo = document.getElementById("titulo").value;
+  const { tabla, totalMin } = buildTable();
+  const hIni = document.getElementById("horaInicio").value;
+  const hFin = fmtHora(parseHora(hIni) + totalMin);
+  const cabecera =
+    `<p style="${P_WRAP}"><b><span style="color:${C_HDR};font-size:12pt;font-family:${FUENTE};">${esc(titulo)}</span></b></p>`
+  + `<p style="${P_WRAP}"><span style="color:black;font-size:${PT};font-family:${FUENTE};">`
+  +   `Ventana: <b>${hIni}</b> a <b>${hFin}</b> &nbsp;|&nbsp; Duración total: <b>${totalMin} min</b>`
+  + `</span></p><p style="${P_WRAP}">&nbsp;</p>`;
+  return cabecera + tabla;
+}
+
+function buildPlainText(){
+  let cursor = parseHora(document.getElementById("horaInicio").value);
+  let id=0, out=[document.getElementById("titulo").value, ""];
+  secciones.forEach(sec=>{
+    out.push(`== ${sec.nombre} ==`);
+    sec.tareas.forEach(t=>{
+      id++; const d=Number(t.dur||0); const ini=cursor, fin=cursor+d; cursor=fin;
+      out.push(`${id}\t${t.tarea}\tPendiente\t${fmtHora(ini)}\t${fmtHora(fin)}\t${d}\t${t.resp}`);
+    });
+  });
+  return out.join("\n");
+}
+
+function render(){
+  const html = buildBloqueEmail();
+  document.getElementById("output").innerHTML = html;
+  document.getElementById("raw").value = html;
+  const { totalMin, resumen } = buildTable();
+  document.getElementById("totales").innerHTML =
+    resumen.length ? `<b>Duración por sección:</b> ${resumen.join(" &nbsp;·&nbsp; ")} &nbsp;→&nbsp; <b>Total ${totalMin} min</b>` : "";
+}
+
+function toggleRaw(){
+  const r = document.getElementById("raw");
+  r.style.display = r.style.display === "block" ? "none" : "block";
+}
+
+/* ============ Copiado ============ */
+async function copiar(){
+  const html = buildBloqueEmail();
+  const plain = buildPlainText();
+  const note = document.getElementById("copied");
+  let ok = false;
+
+  if (navigator.clipboard && window.ClipboardItem) {
+    try {
+      await navigator.clipboard.write([ new ClipboardItem({
+        "text/html":  new Blob([html],  { type: "text/html"  }),
+        "text/plain": new Blob([plain], { type: "text/plain" })
+      })]);
+      ok = true;
+    } catch(e) { ok = false; }
+  }
+
+  if (!ok) {
+    const wrap = document.createElement("div");
+    wrap.setAttribute("contenteditable","true");
+    wrap.style.cssText = "position:fixed;left:-99999px;top:0;opacity:0;";
+    wrap.innerHTML = html;
+    document.body.appendChild(wrap);
+    const range = document.createRange(); range.selectNodeContents(wrap);
+    const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    try { ok = document.execCommand("copy"); } catch(e) { ok = false; }
+    sel.removeAllRanges(); document.body.removeChild(wrap);
+  }
+
+  note.textContent = ok ? "✓ Copiado — pegá en Outlook" : "✗ No se pudo copiar";
+  setTimeout(()=>note.textContent="", 3500);
+}
+
+/* ============ Init ============ */
+renderPanel(); render();
+</script>
+</body>
+</html>

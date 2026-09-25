@@ -78,7 +78,7 @@ Problems found in the prototype (do **not** carry these over):
 
 ---
 
-## 0b. Deploy Plan Generator tool — NEXT
+## 0b. Deploy Plan Generator tool — ✅ Done — see SPEC §5.6
 
 **Goal:** port the standalone prototype `generador-plan-despliegue.html` (kept locally, **not committed**: it contains internal system names and this repo is public) into a new tool. It builds a deployment-window plan (sections → steps with duration and owner), computes start/end times from a start hour, and copies an Outlook-ready HTML table to the clipboard.
 
@@ -99,6 +99,9 @@ Problems found in the prototype (do **not** carry these over):
 - Default steps reference internal systems — replace with neutral examples before committing.
 
 ### 0b.3 Integration plan
+
+As built, with these differences: the plain-text copy lives in `email.ts` next to the HTML; edits go through `reducer.ts`; the JSON format, validation, example plan and storage are in `planFile.ts`; the preview sits **below** the editor, because `#root` is capped at 1280px and the table needs ~880px.
+
 - `src/lib/deployPlan/` (pure, testable):
   - `time.ts` — `parseTime` (strict `HH:MM`, returns null when invalid), `formatTime` (mod 24h).
   - `schedule.ts` — `schedulePlan(plan)` → rows with id, start, end, per-section and total minutes (single source for table, text and totals).
@@ -110,12 +113,12 @@ Problems found in the prototype (do **not** carry these over):
 - UI strings through `useTranslation` (en/es/pt). The **email content** stays in Spanish unless decided otherwise.
 - Register in `HomePage.tsx`, update `SPEC.md`.
 
-### 0b.4 Open questions
-1. Should GO / ROLLBACK times continue after the previous section, or restart from their own start (e.g. rollback starts where it would be triggered)?
-2. Should sections be editable (add/rename/remove) and owners free text or a configurable list?
-3. Should "Estado" be editable (Pendiente / En curso / OK / Error), making this also a tracker during the window?
-4. Persist the last plan in `localStorage`? Import/export as JSON to reuse templates?
-5. Email headers/content: always Spanish, or follow the UI language?
+### 0b.4 Decisions (were open questions)
+1. **Chained times:** GO and ROLLBACK continue the clock after the previous section, as in the prototype.
+2. **Sections** come from the plan (INICIO / GO / ROLLBACK in the example, any names in a loaded JSON) and aren't editable in the UI. **Owners** are a list the user edits (comma-separated) and that travels in the JSON. Steps can be **reordered** (up/down).
+3. **Estado** stays "Pendiente".
+4. **Persistence:** the plan is kept in `localStorage` and can be downloaded / loaded as JSON. Real system and team names live only in those files; the repo ships a neutral example.
+5. **Email content** is always Spanish.
 
 **Done when:** the tool is in the selector; editing a step updates times and preview instantly; "Copy for email" pastes into Outlook Web with the same look as the prototype; invalid start times and negative durations are rejected; `pnpm build` / lint green; SPEC updated.
 

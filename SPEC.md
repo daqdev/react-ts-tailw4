@@ -9,7 +9,7 @@
 
 **oktools** is a client-side, single-page web application that provides a small set of developer utilities ("tools") on one screen. A user picks tools from a top-of-page selector; each pick mounts a new, independent tool instance below. Multiple instances of the same tool can run side by side without sharing state.
 
-There is no backend, no persistence, and no authentication. All work happens in the browser tab and is lost on reload.
+There is no backend and no authentication. Most work happens in the browser tab and is lost on reload; the only things kept are browser-local (`localStorage`): Smart Canvas's learned characters and Deploy Plan's current plan.
 
 ---
 
@@ -50,6 +50,7 @@ src/
 │   ├── EpochTool.tsx              Tool: live epoch ticker + converter
 │   ├── JsonTemplaterTool.tsx      Tool: JSON → mandatory-field template
 │   ├── SmartCanvasTool.tsx        Tool: drawing canvas that tidies shapes
+│   ├── DeployPlanTool.tsx         Tool: deployment-window plan → Outlook table
 │   ├── JsonTreeNode.tsx           Recursive tree node used by the templater
 │   ├── InputPanel.tsx             Shared input UI (used by StringTool)
 │   ├── ResultsPanel.tsx           Shared results UI (used by StringTool)
@@ -63,6 +64,15 @@ src/
 ├── hooks/
 │   └── useTranslation.ts          Tiny i18n hook
 └── lib/
+    ├── clipboard.ts               copyHtml: rich-text copy with a selection fallback
+    ├── download.ts                downloadText: save a string as a file
+    ├── deployPlan/                Pure logic for the Deploy Plan tool
+    │   ├── types.ts               Plan, Section, Step, newId
+    │   ├── time.ts                parseTime, formatTime, normalizeTime
+    │   ├── schedule.ts            schedulePlan: start/end per step, totals
+    │   ├── email.ts               Outlook HTML table + tab-separated text
+    │   ├── planFile.ts            JSON file format, validation, example plan, localStorage
+    │   └── reducer.ts             planReducer: edits used by the component
     └── sketch/                    Pure shape-recognition + canvas rendering helpers
         ├── geometry.ts            Point math, resampling, RDP simplification
         ├── shapes.ts              recognizeShape, tryAttachArrowHead
@@ -84,7 +94,7 @@ src/
 - `src/App.tsx` wraps everything in `BrowserRouter` and declares a single route, `/` → `HomePage`. A second route for a `SprintWizardPage` is commented out.
 
 ### 4.2 Tool registry and instance model — `src/routes/HomePage.tsx`
-- Static array `tools: ToolConfig[]` registers the five available tools by `{ id, name, component }`.
+- Static array `tools: ToolConfig[]` registers the six available tools by `{ id, name, component }`.
 - State: `selectedTools: ActiveTool[]`.
 - `addTool(tool)`:
   - generates `instanceId = Date.now()`,
@@ -172,6 +182,19 @@ Drawing canvas that tidies hand-drawn diagram shapes (BACKLOG §0, phase A). Eve
 - **Chalkboard theme (`src/lib/sketch/palette.ts`):** only the drawing area switches to a black background. Elements store a palette key (`ink`, `indigo`, …) rather than a hex color, and each key has a light and a chalkboard value, so toggling the theme recolors existing drawings. PNG export uses the current theme's background.
 - **UI strings** go through `useTranslation` (`canvas*` and `shape_*` keys).
 
+### 5.6 DeployPlanTool — `src/components/DeployPlanTool.tsx`
+Builds the plan for a deployment window and copies it as an Outlook-ready table (BACKLOG §0b). Ported from a standalone HTML prototype that stays out of the repo because its default steps named internal systems.
+
+- **Plan** (`src/lib/deployPlan/types.ts`): `{ title, startTime ("HH:MM"), owners: string[], sections: [{ id, name, steps: [{ id, description, duration, owner }] }] }`. `id`s are in-memory keys from `newId`, never saved.
+- **State:** `useReducer(planReducer)` (`reducer.ts`): `replace`, `setTitle`, `setStartTime`, `setOwners`, `addStep`, `updateStep`, `removeStep`, `moveStep` (up/down within its section; no-op at the ends). Sections come from the plan and can't be added or renamed in the UI.
+- **Editing:** title; start time and durations go through a small `DraftInput` that keeps invalid text on screen (red border + message) but only commits valid values, so the plan is always valid: start time must be `H:MM`/`HH:MM` 24 h (normalized to `HH:MM`), durations whole minutes 0–9999. Owners are edited as one comma-separated field (trimmed, de-duplicated); each step picks its owner from that list (a step keeps an owner that was removed from the list).
+- **Schedule** (`schedule.ts`): steps run back to back from the start time across all sections in order (GO and ROLLBACK continue the clock); times wrap past midnight. Gives each step its number (continuous across sections), start and end, plus minutes per section and in total. Computed once per change and shared by the preview, the copy and the totals line.
+- **Email output** (`email.ts`): title, "Ventana: start a end | Duración total", and the table (ID, task, ESTADO — always "Pendiente" —, INICIO/FIN, duration, owner), with one colored separator row per section, including empty ones. Markup and constants are the prototype's (Calibri 10pt, header `#0F243E`, section rows `#8497B0`, widths in pt, text color on the inner `<span>` because Outlook Web overrides the `<td>`, borders arranged to avoid doubles); for the same data the HTML is byte-identical to the prototype's. Every user value is HTML-escaped. The content is always Spanish, whatever the UI language. `buildPlainText` gives a tab-separated version.
+- **Preview:** an `<iframe srcDoc>` (`sandbox="allow-same-origin"`, no scripts) sized to its content, so Tailwind's reset doesn't touch the email markup. It sits below the editor (the app's 1280px cap leaves no room beside it) and scrolls horizontally when narrower than the ~880px table. "Show HTML" reveals the raw markup.
+- **Copy** (`src/lib/clipboard.ts`): `copyHtml(html, text)` writes `text/html` + `text/plain` with the async Clipboard API, falling back to selecting a hidden `contenteditable` copy and `execCommand("copy")`.
+- **Plan file** (`planFile.ts`): JSON `{ version: 1, title, startTime, owners, sections: [{ name, steps: [{ description, duration, owner }] }] }`. The plan is saved to `localStorage` (`oktools.deployPlan.v1`) on every change and loaded on mount; "Download JSON" saves it (file name from the title), "Load JSON" replaces the plan after validation (errors name the offending field, e.g. `sections[0].steps[2].duration`; the current plan is kept), "Load example" (after confirmation) restores the neutral example. Missing `title` / `startTime` / `owners` / `description` / `owner` take defaults; `sections` must be a non-empty list. Real system and team names are meant to live only in these files.
+- **UI strings** go through `useTranslation` (`deploy*` keys).
+
 ---
 
 ## 6. Shared infrastructure
@@ -196,7 +219,7 @@ Drawing canvas that tidies hand-drawn diagram shapes (BACKLOG §0, phase A). Eve
 - `useTranslation()` returns `{ t, toggleLanguage, currentLang }`.
 - `t(key, params)` looks up `translations[currentLang][key]`, falls back to the key itself, and substitutes `{param}` placeholders.
 - `toggleLanguage()` cycles through `langOrder`.
-- Currently consumed only by the String Tool input panel (the hook is imported but the import in `StringTool.tsx` is commented out — translation is wired in via `InputPanel.tsx`).
+- Consumed by the String Tool input panel (the hook is imported but the import in `StringTool.tsx` is commented out — translation is wired in via `InputPanel.tsx`), Smart Canvas and Deploy Plan. Each call starts in `en`, and no tool exposes `toggleLanguage` yet, so the UI shows English.
 
 ---
 
@@ -219,7 +242,8 @@ These are characteristics of the current code, not requirements:
 - **Instance ID collisions:** `HomePage.tsx` uses `Date.now()` for `instanceId`. Two rapid clicks within the same millisecond produce duplicate keys and break `removeTool` for those instances.
 - **Element-in-state:** `addTool` stores a pre-built `ReactElement` on `ActiveTool` via `createElement(tool.component)`. It works but it's unusual; storing the component type would be more idiomatic.
 - **Router stub:** only one route exists; `react-router-dom` is essentially unused.
-- **No persistence:** tool inputs, the loaded template, and the language selection are all lost on reload.
+- **Little persistence:** tool inputs, the loaded template, and the language selection are lost on reload. Exceptions: Smart Canvas's learned characters and Deploy Plan's plan (`localStorage`).
+- **Deploy Plan instances share one saved plan:** every instance reads the same `localStorage` key on mount and writes it on each edit, so after a reload they all show whichever was edited last.
 - **Mixed styling:** Tailwind classes for most of the UI, but `JsonTool` and `JsonTemplaterTool` use plain CSS class names (`drop-zone`, `json-tool`, `json-input`, …) whose definitions live in the global CSS rather than alongside the components.
 - **Template path matcher:** `validateJsonAgainstTemplate` only inspects the first element of any `[]` array — it does not check every element.
 - **Partial-format fallback:** when JSON parsing fails, `JsonTool` runs a chain of `String#replace` calls that pass escape sequences through unchanged, then displays the result. This is best-effort cosmetic behaviour, not a fix-up of malformed JSON.

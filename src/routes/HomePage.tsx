@@ -6,6 +6,7 @@ import JsonTool from "../components/JsonTool";
 import EpochTool from "../components/EpochTool";
 import JsonTemplaterTool from '../components/JsonTemplaterTool';
 import SmartCanvasTool from "../components/SmartCanvasTool";
+import DeployPlanTool from "../components/DeployPlanTool";
 import type { ToolConfig, ActiveTool } from "../interfaces/tool";
 const tools: ToolConfig[] = [
     { id: 1, name: "String Tool", component: StringTool },
@@ -13,6 +14,7 @@ const tools: ToolConfig[] = [
     { id: 3, name: "Epoch Tool", component: EpochTool },
     { id: 4, name: "JSON Templater Tool", component: JsonTemplaterTool },
     { id: 5, name: "Smart Canvas", component: SmartCanvasTool },
+    { id: 6, name: "Deploy Plan", component: DeployPlanTool },
     // { id: 3, name: "Tool 3", component: <div>Tool 3 Content</div> },
     // { id: 4, name: "Tool 4", component: <div>Tool 4 Content</div> },
 ];

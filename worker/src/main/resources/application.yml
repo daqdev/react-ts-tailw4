@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: worker
+  jackson:
+    time-zone: UTC
+
+server:
+  port: ${WORKER_PORT:8082}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+dualbot:
+  gateway:
+    url: ${GATEWAY_URL:http://localhost:8080}
+    token: ${WORKER_TOKEN:}

@@ -1,0 +1,7 @@
+.git
+.github
+**/target
+dashboard
+secrets
+.env
+*.md

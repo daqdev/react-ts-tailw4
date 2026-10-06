@@ -1,0 +1,15 @@
+# Build output
+target/
+node_modules/
+dist/
+
+# Local config and secrets (secrets/ has its own .gitignore)
+.env
+*.local
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+*.log

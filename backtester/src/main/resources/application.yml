@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: backtester
+  jackson:
+    time-zone: UTC
+
+server:
+  port: ${BACKTESTER_PORT:8083}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+dualbot:
+  gateway:
+    url: ${GATEWAY_URL:http://localhost:8080}
+    token: ${BACKTESTER_TOKEN:}

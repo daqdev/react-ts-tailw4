@@ -1,0 +1,85 @@
+# Five containers, one stack (SPEC §3). Copy .env.example to .env first.
+name: dualbot
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: dualbot
+      POSTGRES_USER: dualbot
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dualbot -d dualbot"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: .
+      args:
+        MODULE: gateway
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/dualbot
+      DB_USER: dualbot
+      DB_PASSWORD: ${DB_PASSWORD}
+      HARD_MAX_SUBSCRIPTIONS_PER_DAY: ${HARD_MAX_SUBSCRIPTIONS_PER_DAY:-6}
+      HARD_MAX_PER_SUBSCRIPTION_USDT: ${HARD_MAX_PER_SUBSCRIPTION_USDT:?set HARD_MAX_PER_SUBSCRIPTION_USDT in .env}
+      HARD_MAX_TOTAL_USDT: ${HARD_MAX_TOTAL_USDT:?set HARD_MAX_TOTAL_USDT in .env}
+      WORKER_TOKEN: ${WORKER_TOKEN:-}
+      BACKTESTER_TOKEN: ${BACKTESTER_TOKEN:-}
+      BINANCE_API_KEY: ${BINANCE_API_KEY:-}
+      BINANCE_PRIVATE_KEY_FILE: /run/secrets/binance_private_key
+      BINANCE_HTTPS_PROXY: ${BINANCE_HTTPS_PROXY:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+    secrets:
+      - binance_private_key
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      args:
+        MODULE: worker
+    environment:
+      GATEWAY_URL: http://gateway:8080
+      WORKER_TOKEN: ${WORKER_TOKEN:-}
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
+  backtester:
+    build:
+      context: .
+      args:
+        MODULE: backtester
+    environment:
+      GATEWAY_URL: http://gateway:8080
+      BACKTESTER_TOKEN: ${BACKTESTER_TOKEN:-}
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
+  dashboard:
+    build: ./dashboard
+    ports:
+      # Bind to a LAN/VPN address only; never publish to the internet (SPEC §13).
+      - "${DASHBOARD_BIND:-127.0.0.1}:${DASHBOARD_PORT:-8081}:80"
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
+secrets:
+  # Only the gateway can read the private key (SPEC §13).
+  binance_private_key:
+    file: ./secrets/binance_private_key.pem
+
+volumes:
+  pgdata:

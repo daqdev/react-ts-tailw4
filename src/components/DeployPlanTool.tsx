@@ -71,7 +71,7 @@ const parseDuration = (text: string) => {
 const fileNameFor = (title: string) =>
     (title
         .normalize("NFD")
-        .replace(/[̀-ͯ]/g, "")
+        .replace(/[\u0300-\u036f]/g, "") // combining accents left by NFD
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-+|-+$/g, "") || "plan-de-despliegue") + ".json";

@@ -186,7 +186,8 @@ Build one test file per source module under test. For each function below, write
 - `validateTemplate` — valid template with multiple fields, valid template with empty `mandatoryFields`, missing `mandatoryFields`, non-object root, field missing `key`/`type`/`path`, non-string values, non-JSON text.
 - `validateJsonAgainstTemplate` — all fields present, single missing field, missing nested field, `[]` array path with non-empty array, `[]` path with empty array (must mark missing), `[]` path where the key is not an array, path starting with `root.`, invalid input JSON (returns empty set per current behaviour — document this).
 - Drag handlers (`handleDragOver`, `handleDragLeave`, `handleDrop`, `handleTemplateDrop`) — verify dragging-state flags, file-type rejection in `handleDrop`, `FileReader` success path (stub `FileReader`). These are React-bound; consider whether they're worth covering after the task-1 study.
-- Debounced format effect — typing valid JSON yields formatted output after the 500 ms debounce; typing invalid JSON yields the error message and the partial-format fallback.
+- Debounced format effect — typing valid JSON yields formatted output after the 500 ms debounce; typing invalid JSON yields the error message and the input unchanged in the output.
+- `formatJson`, `findPasteArtifacts` / `cleanPasteArtifacts` (`src/lib/json/`) and `decodeTextFile` (`src/lib/textFile.ts`) are pure — test them directly. `formatJson` must match `JSON.stringify(JSON.parse(text), null, 2)` for ordinary input (a randomized comparison works well) and keep unsafe numbers, duplicate keys and key order as written.
 
 ### 3.3 EpochTool (`src/components/EpochTool.tsx`)
 - Conversion effect — empty input clears output; numeric seconds and milliseconds both convert correctly; non-numeric input yields `"Invalid epoch value"`; out-of-range numbers yield `"Invalid epoch value"`; `useUtc=true` sets the formatter's timeZone; `useMilliseconds` switches the divisor.

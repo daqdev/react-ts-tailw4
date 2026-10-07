@@ -65,6 +65,10 @@ src/
 │   └── useTranslation.ts          Tiny i18n hook
 └── lib/
     ├── clipboard.ts               copyHtml: rich-text copy with a selection fallback
+    ├── textFile.ts                decodeTextFile: BOM / UTF-8 / Windows-1252 decoding of dropped files
+    ├── json/                      Pure logic for the JSON Tool
+    │   ├── format.ts              formatJson: lossless re-indentation
+    │   └── pasteArtifacts.ts      find / clean characters that break pasted JSON
     ├── download.ts                downloadText: save a string as a file
     ├── deployPlan/                Pure logic for the Deploy Plan tool
     │   ├── types.ts               Plan, Section, Step, newId
@@ -127,13 +131,13 @@ Splits a delimited list and re-emits it with chosen separator / quoting.
 ### 5.2 JsonTool — `src/components/JsonTool.tsx`
 Formats JSON and optionally validates it against a *template* describing mandatory fields.
 
-- **State:** `inputJson`, `formattedJson`, `error`, `isDragging`, `isTemplateDragging`, `validationStatus` (`'valid' | 'invalid' | 'none'`), `template: Template | null`, `missingFields: Set<string>`.
-- **Input sources:** typed/pasted into the main textarea, or a file dropped onto the main drop zone (`text/plain` or `application/json`, read with `FileReader.readAsText`).
+- **State:** `inputJson`, `formattedJson`, `error`, `isDragging`, `isTemplateDragging`, `validationStatus` (`'valid' | 'invalid' | 'none'`), `template: Template | null`, `missingFields: Set<string>`, `keptNumbers: string[]`, `fileNote: string | null`.
+- **Input sources:** typed/pasted into the main textarea, or a file dropped onto the main drop zone (`text/plain` or `application/json`). Dropped files (data and template) are decoded by `decodeTextFile` (`src/lib/textFile.ts`): a byte order mark picks UTF-8 / UTF-16LE / UTF-16BE; otherwise UTF-8, falling back to Windows-1252 ("ANSI") when the bytes aren't valid UTF-8, with a note under the output saying so.
 - **Template input:** a separate drop zone accepts a template file. `validateTemplate(text)` requires the parsed JSON to be an object containing `mandatoryFields: TemplateField[]`, with each field having string `key`, `type`, and `path`. An empty `mandatoryFields` array is considered valid.
 - **Format pipeline (debounced 500 ms via `useEffect` + `setTimeout`):**
   1. If input is empty → clear output, errors, missing fields.
-  2. `JSON.parse(inputJson)` → `JSON.stringify(parsed, null, 2)`; if a template is loaded, run `validateJsonAgainstTemplate`.
-  3. On parse failure → set an error message and emit a best-effort partially-formatted string (a sequence of `String.replace` calls that pass through escape sequences).
+  2. `formatJson(inputJson)` (`src/lib/json/format.ts`); if a template is loaded, run `validateJsonAgainstTemplate`. `formatJson` validates with `JSON.parse`, then re-indents the original text (2 spaces) instead of re-serializing the parsed value. For ordinary input the result is identical to `JSON.stringify(JSON.parse(text), null, 2)` (strings are round-tripped so escapes come out the same way), but nothing is lost going through JavaScript values: numbers JavaScript can't hold exactly (64-bit ids, `1e400`, very long decimals) are kept as written and listed under the output, and duplicate or integer-like keys keep their original order.
+  3. On parse failure → error message with the browser's parser message (position, line and column in Chromium); the output shows the input unchanged. If the input contains characters JSON rejects that copying from Word / Outlook / Teams / web pages tends to add — curly double quotes, no-break / figure / narrow no-break spaces, zero-width space, byte order mark (`findPasteArtifacts`, `src/lib/json/pasteArtifacts.ts`) — a message counts them and a "Replace them" button rewrites the input with `cleanPasteArtifacts`.
 - **Mandatory-field check (`validateJsonAgainstTemplate`):** for each `field.path` (e.g. `root.user.email[]`), walks the parsed JSON dot-by-dot. The literal segment `root` is skipped. A segment ending in `[]` requires the named key to be a non-empty array; further descent uses the first element. Missing paths are collected into the returned `Set<string>`.
 - **Output UI:** read-only textarea with formatted JSON (red-tinted via `validation-error` class if any mandatory fields are missing), a "Copy Formatted JSON" button, and an inline message listing missing field paths.
 - **Styling:** mostly plain CSS classes (`json-tool`, `drop-zone`, `template-drop-zone`, `validation-error`) rather than Tailwind. The template drop zone changes color based on `validationStatus`.
@@ -246,6 +250,5 @@ These are characteristics of the current code, not requirements:
 - **Deploy Plan instances share one saved plan:** every instance reads the same `localStorage` key on mount and writes it on each edit, so after a reload they all show whichever was edited last.
 - **Mixed styling:** Tailwind classes for most of the UI, but `JsonTool` and `JsonTemplaterTool` use plain CSS class names (`drop-zone`, `json-tool`, `json-input`, …) whose definitions live in the global CSS rather than alongside the components.
 - **Template path matcher:** `validateJsonAgainstTemplate` only inspects the first element of any `[]` array — it does not check every element.
-- **Partial-format fallback:** when JSON parsing fails, `JsonTool` runs a chain of `String#replace` calls that pass escape sequences through unchanged, then displays the result. This is best-effort cosmetic behaviour, not a fix-up of malformed JSON.
 - **No tests, no CI.** The only correctness gates are `tsc -b` and ESLint.
 - **Dead code:** `HomePage.tsx:14-15` (commented-out tool slots) and `App.tsx:4,12` (commented-out `SprintWizardPage` route).

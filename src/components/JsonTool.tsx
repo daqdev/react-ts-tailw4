@@ -1,5 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import type { Template } from '../interfaces/template';
+import { formatJson } from '../lib/json/format';
+import { cleanPasteArtifacts, findPasteArtifacts } from '../lib/json/pasteArtifacts';
+import { decodeTextFile } from '../lib/textFile';
+
+/** Reads a dropped file, noting when it had to fall back from UTF-8. */
+async function readDroppedFile(file: File): Promise<{ text: string; note: string | null }> {
+  const { text, encoding } = decodeTextFile(await file.arrayBuffer());
+  const note = encoding === 'windows-1252'
+    ? `"${file.name}" is not UTF-8, so it was read as Windows-1252 (ANSI).`
+    : null;
+  return { text, note };
+}
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 const JsonTool: React.FC = () => {
   const [inputJson, setInputJson] = useState('');
@@ -10,6 +24,8 @@ const JsonTool: React.FC = () => {
   const [validationStatus, setValidationStatus] = useState<'valid' | 'invalid' | 'none'>('none');
   const [template, setTemplate] = useState<Template | null>(null);
   const [missingFields, setMissingFields] = useState<Set<string>>(new Set());
+  const [keptNumbers, setKeptNumbers] = useState<string[]>([]);
+  const [fileNote, setFileNote] = useState<string | null>(null);
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>, isTemplateDropZone: boolean = false) => {
     event.preventDefault();
@@ -40,38 +56,32 @@ const JsonTool: React.FC = () => {
 
     if (file) {
       if (file.type === 'text/plain' || file.type === 'application/json') {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const text = e.target?.result as string;
+        readDroppedFile(file).then(({ text, note }) => {
           setInputJson(text);
-        };
-        reader.readAsText(file);
+          setFileNote(note);
+        });
       } else {
         setError('Invalid file type. Please drop a .txt or .json file.');
       }
     }
   };
 
-          const handleTemplateDrop = (event: React.DragEvent<HTMLDivElement>) => {
-            event.preventDefault();
-            event.stopPropagation();
-            setIsTemplateDragging(false);      const file = event.dataTransfer.files[0];
+  const handleTemplateDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsTemplateDragging(false);
+    const file = event.dataTransfer.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        console.log(1231);
-        const text = e.target?.result as string;
+      readDroppedFile(file).then(({ text, note }) => {
+        setFileNote(note);
         if (validateTemplate(text)) {
           setValidationStatus('valid');
           setTemplate(JSON.parse(text));
-          console.log('Template validation: Valid');
         } else {
           setValidationStatus('invalid');
           setTemplate(null);
-          console.log('Template validation: Invalid');
         }
-      };
-      reader.readAsText(file);
+      });
     }
   };
 
@@ -164,12 +174,14 @@ const JsonTool: React.FC = () => {
         setFormattedJson('');
         setError(null);
         setMissingFields(new Set());
+        setKeptNumbers([]);
         return;
       }
 
       try {
-        const parsed = JSON.parse(inputJson);
-        setFormattedJson(JSON.stringify(parsed, null, 2));
+        const result = formatJson(inputJson);
+        setFormattedJson(result.text);
+        setKeptNumbers(result.keptNumbers);
         setError(null);
 
         if (template) {
@@ -178,19 +190,12 @@ const JsonTool: React.FC = () => {
           setMissingFields(new Set());
         }
 
-      } catch {
-        setError('Invalid JSON format. Formatting as much as possible.');
-        // Attempt to format what we can
-        const partiallyFormatted = inputJson
-          .replace(/\n/g, '\n')
-          .replace(/'/g, "'")
-          .replace(/"/g, '"')
-          .replace(/&/g, '&')
-          .replace(/\r/g, '\r')
-          .replace(/\t/g, '\t')
-          .replace(/\b/g, '\b')
-          .replace(/\f/g, '\f');
-        setFormattedJson(partiallyFormatted);
+      } catch (e) {
+        // Show the input untouched: rewriting invalid JSON only adds confusion.
+        const reason = e instanceof Error ? e.message : String(e);
+        setError(`Invalid JSON: ${reason}. The input is shown unchanged.`);
+        setFormattedJson(inputJson);
+        setKeptNumbers([]);
         setMissingFields(new Set());
       }
     }, 500); // 500ms delay
@@ -202,7 +207,21 @@ const JsonTool: React.FC = () => {
 
   const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputJson(event.target.value);
+    setFileNote(null);
   };
+
+  // Only worth pointing out when they are why the JSON doesn't parse.
+  const artifacts = error ? findPasteArtifacts(inputJson) : null;
+  const artifactParts = artifacts
+    ? [
+        artifacts.smartQuotes && plural(artifacts.smartQuotes, 'curly quote'),
+        artifacts.specialSpaces && plural(artifacts.specialSpaces, 'non-breaking space'),
+        artifacts.invisible && plural(artifacts.invisible, 'invisible character'),
+      ].filter((part): part is string => Boolean(part))
+    : [];
+  const artifactSummary = artifactParts.length > 1
+    ? `${artifactParts.slice(0, -1).join(', ')} and ${artifactParts[artifactParts.length - 1]}`
+    : artifactParts[0];
 
   const handleCopy = () => {
     navigator.clipboard.writeText(formattedJson);
@@ -247,6 +266,27 @@ const JsonTool: React.FC = () => {
           Copy Formatted JSON
         </button>
         {error && <div className="error-message">{error}</div>}
+        {artifacts && artifacts.total > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-700">
+            <span>
+              The input has {artifactSummary}, which JSON doesn't accept. They usually come from
+              copying out of Word, Outlook, Teams or a web page.
+            </span>
+            <button
+              type="button"
+              onClick={() => setInputJson(cleanPasteArtifacts(inputJson))}
+              className="rounded-md border border-slate-300 bg-white px-3 py-1 font-semibold text-slate-700 shadow-sm hover:bg-slate-100"
+            >
+              Replace them
+            </button>
+          </div>
+        )}
+        {keptNumbers.length > 0 && (
+          <div className="mt-2 text-sm text-slate-700">
+            Kept as written, because JavaScript can't hold these numbers exactly: {keptNumbers.join(', ')}
+          </div>
+        )}
+        {fileNote && <div className="mt-2 text-sm text-slate-700">{fileNote}</div>}
         {missingFields.size > 0 && (
           <div className="error-message">
             Missing mandatory fields: {Array.from(missingFields).join(', ')}

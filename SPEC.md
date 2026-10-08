@@ -229,7 +229,7 @@ Builds the plan for a deployment window and copies it as an Outlook-ready table 
 
 ## 7. Build & run
 
-- `pnpm install`
+- `pnpm install` — `pnpm-workspace.yaml` approves esbuild's install script (`allowBuilds`); pnpm 11 fails the install on unapproved build scripts (`ERR_PNPM_IGNORED_BUILDS`), pnpm ≥ 10.26 reads the same setting.
 - `pnpm dev` — Vite dev server with HMR.
 - `pnpm build` — `tsc -b && vite build`.
 - `pnpm lint` — ESLint over the repo.
